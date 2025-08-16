@@ -40,7 +40,7 @@ export default defineConfig(({ mode }) => ({
         manualChunks: {
           // Separate vendor chunks for better caching
           'react-vendor': ['react', 'react-dom'],
-          'ui-vendor': ['@radix-ui/react-slider', '@radix-ui/react-button', '@radix-ui/react-card'],
+          'ui-vendor': ['@radix-ui/react-slider'],
           'audio-vendor': ['@breezystack/lamejs'],
           'utils-vendor': ['clsx', 'tailwind-merge', 'class-variance-authority'],
         },
@@ -82,8 +82,6 @@ export default defineConfig(({ mode }) => ({
       'react',
       'react-dom',
       '@radix-ui/react-slider',
-      '@radix-ui/react-button',
-      '@radix-ui/react-card',
       'clsx',
       'tailwind-merge',
     ],
