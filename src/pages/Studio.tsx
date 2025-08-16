@@ -15,13 +15,15 @@ const Studio = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
   const [originalFileName, setOriginalFileName] = useState<string>('');
   const [showTitle, setShowTitle] = useState<boolean>(true);
-  const [effects, setEffects] = useState<AudioEffects>({
-    // Base effects
+  // Initialize effects with proper defaults
+  const defaultEffects: AudioEffects = {
     reverb: 0.3,
-    bassBoost: 0.0, // Start with no bass boost
+    bassBoost: 0, // Start with no bass boost (explicit 0)
     tempo: 0.8, // 80% tempo
     volume: 0.7,
-  });
+  };
+
+  const [effects, setEffects] = useState<AudioEffects>(defaultEffects);
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [processedAudioBuffer, setProcessedAudioBuffer] = useState<AudioBuffer | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
@@ -63,6 +65,13 @@ const Studio = () => {
         clearTimeout(effectUpdateTimeoutRef.current);
       }
     };
+  }, []);
+
+  // Ensure bass boost starts at 0 on mount
+  useEffect(() => {
+    if (effects.bassBoost !== 0) {
+      setEffects(prev => ({ ...prev, bassBoost: 0 }));
+    }
   }, []);
 
   const handleFileImport = useCallback(async (file: File) => {
@@ -129,6 +138,11 @@ const Studio = () => {
   const handleEffectsChange = useCallback((newEffects: AudioEffects) => {
     setEffects(newEffects);
   }, []);
+
+  // Reset effects to defaults
+  const resetEffects = useCallback(() => {
+    setEffects(defaultEffects);
+  }, [defaultEffects]);
 
   return (
     <div className="min-h-screen animated-bg p-6">
