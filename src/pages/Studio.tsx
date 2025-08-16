@@ -19,7 +19,7 @@ const Studio = () => {
     // Base effects
     reverb: 0.3,
     bassBoost: 0.0, // Start with no bass boost
-    tempo: 0.8,
+    tempo: 0.8, // 80% tempo
     volume: 0.7,
   });
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
@@ -125,10 +125,10 @@ const Studio = () => {
     }
   }, [processedAudioBuffer, originalFileName]);
 
-  // Debounced effects change handler
+  // Effects change handler with immediate updates
   const handleEffectsChange = useCallback((newEffects: AudioEffects) => {
-    debouncedSetEffects(newEffects);
-  }, [debouncedSetEffects]);
+    setEffects(newEffects);
+  }, []);
 
   return (
     <div className="min-h-screen animated-bg p-6">

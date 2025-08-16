@@ -159,9 +159,10 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
                 <Music className="w-4 h-4 text-muted-foreground" />
                 <label className="text-sm font-medium text-foreground">Reverb</label>
               </div>
-              <span className="text-sm text-muted-foreground">{(effects.reverb * 100).toFixed(1)}%</span>
+              <span className="text-sm text-muted-foreground">{Math.round(effects.reverb * 100)}%</span>
             </div>
             <Slider
+              key={`reverb-${effects.reverb}`}
               value={[effects.reverb]}
               onValueChange={([value]) => updateEffect('reverb', value)}
               max={1}
@@ -178,9 +179,10 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
                 <Zap className="w-4 h-4 text-muted-foreground" />
                 <label className="text-sm font-medium text-foreground">Bass Boost</label>
               </div>
-              <span className="text-sm text-muted-foreground">{(effects.bassBoost * 100).toFixed(1)}%</span>
+              <span className="text-sm text-muted-foreground">{Math.round(effects.bassBoost * 100)}%</span>
             </div>
             <Slider
+              key={`bassBoost-${effects.bassBoost}`}
               value={[effects.bassBoost]}
               onValueChange={([value]) => updateEffect('bassBoost', value)}
               max={1}
@@ -197,13 +199,14 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
                 <Music className="w-4 h-4 text-muted-foreground" />
                 <label className="text-sm font-medium text-foreground">Tempo</label>
               </div>
-              <span className="text-sm text-muted-foreground">{(effects.tempo * 100).toFixed(1)}%</span>
+              <span className="text-sm text-muted-foreground">{Math.round(effects.tempo * 100)}%</span>
             </div>
             <Slider
+              key={`tempo-${effects.tempo}`}
               value={[effects.tempo]}
               onValueChange={([value]) => updateEffect('tempo', value)}
               max={2}
-              min={0.5}
+              min={0.25}
               step={0.01}
               className="w-full"
             />
@@ -216,9 +219,10 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
                 <Volume2 className="w-4 h-4 text-muted-foreground" />
                 <label className="text-sm font-medium text-foreground">Volume</label>
               </div>
-              <span className="text-sm text-muted-foreground">{(effects.volume * 100).toFixed(1)}%</span>
+              <span className="text-sm text-muted-foreground">{Math.round(effects.volume * 100)}%</span>
             </div>
             <Slider
+              key={`volume-${effects.volume}`}
               value={[effects.volume]}
               onValueChange={([value]) => updateEffect('volume', value)}
               max={1}
