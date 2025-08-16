@@ -1,11 +1,25 @@
 # EZ Audio Studio - Build Instructions
 
-This guide will help you create desktop executables for the EZ Audio Studio application.
+This guide will help you create desktop executables for the EZ Audio Studio application using Tauri (Rust backend).
 
 ## Prerequisites
 
 - Node.js 18+ and npm
+- Rust (install from https://rustup.rs/)
 - Git (for cloning the repository)
+
+### Platform-Specific Prerequisites
+
+**Windows:**
+- Microsoft C++ Build Tools
+- WebView2 (usually already installed)
+
+**macOS:**
+- Xcode Command Line Tools: `xcode-select --install`
+
+**Linux:**
+- webkit2gtk: `sudo apt-get install webkit2gtk-4.0-dev`
+- Additional deps: `sudo apt-get install build-essential curl wget libssl-dev libgtk-3-dev libayatana-appindicator3-dev librsvg2-dev`
 
 ## Quick Start
 
@@ -14,65 +28,54 @@ This guide will help you create desktop executables for the EZ Audio Studio appl
 npm install
 ```
 
-### 2. Development Mode (with Electron)
+### 2. Development Mode
 ```bash
-npm run electron:dev
+npm run tauri dev
 ```
-This will start both the Vite dev server and Electron app in development mode.
+This will start both the Vite dev server and Tauri app in development mode.
 
 ### 3. Build Executables
 
-#### For All Platforms
+#### For Current Platform
 ```bash
-npm run electron:dist
+npm run tauri build
 ```
 
-#### For Specific Platforms
-
-**Windows:**
+#### For Specific Platforms (Cross-compilation)
 ```bash
-npm run build
-npx electron-builder --win
-```
+# Windows (from any platform with proper toolchain)
+npm run tauri build --target x86_64-pc-windows-msvc
 
-**macOS:**
-```bash
-npm run build
-npx electron-builder --mac
-```
+# macOS (from macOS only)
+npm run tauri build --target x86_64-apple-darwin
+npm run tauri build --target aarch64-apple-darwin
 
-**Linux:**
-```bash
-npm run build
-npx electron-builder --linux
+# Linux
+npm run tauri build --target x86_64-unknown-linux-gnu
 ```
 
 ## Build Outputs
 
-After building, you'll find the executables in the `dist-electron` folder:
+After building, you'll find the executables in the `src-tauri/target/release/bundle` folder:
 
 ### Windows
-- `EZ Audio Studio Setup.exe` - Installer
-- `EZ Audio Studio.exe` - Portable executable
+- `ez-audio-studio_1.0.0_x64-setup.exe` - Installer (NSIS)
+- `ez-audio-studio_1.0.0_x64.msi` - MSI installer
 
 ### macOS
-- `EZ Audio Studio.dmg` - Disk image
 - `EZ Audio Studio.app` - Application bundle
+- `EZ Audio Studio.dmg` - Disk image
 
 ### Linux
-- `EZ Audio Studio.AppImage` - AppImage (portable)
-- `ez-audio-studio.deb` - Debian package
-- `ez-audio-studio.rpm` - RPM package
+- `ez-audio-studio_1.0.0_amd64.deb` - Debian package
+- `ez-audio-studio_1.0.0_amd64.AppImage` - AppImage (portable)
 
 ## Available Scripts
 
 - `npm run dev` - Start Vite dev server only
 - `npm run build` - Build the web app
-- `npm run electron` - Run Electron with built files
-- `npm run electron:dev` - Run Electron in development mode
-- `npm run electron:build` - Build and package the app
-- `npm run electron:pack` - Build and create unpacked directory
-- `npm run electron:dist` - Build and create distributable packages
+- `npm run tauri dev` - Run Tauri in development mode
+- `npm run tauri build` - Build and create distributable packages
 
 ## Features
 
@@ -107,8 +110,8 @@ After building, you'll find the executables in the `dist-electron` folder:
 
 ### Development Tips
 
-- Use `npm run electron:dev` for development with hot reload
-- Check the Electron console for debugging (View > Toggle Developer Tools)
+- Use `npm run tauri dev` for development with hot reload
+- Check the browser console for debugging (right-click > Inspect Element)
 - The app runs on `http://localhost:8080` in development mode
 
 ## Distribution

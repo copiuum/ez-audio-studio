@@ -1,6 +1,7 @@
 declare global {
   interface Window {
-    electronAPI: {
+    __TAURI__: any;
+    tauriAPI: {
       // File operations
       openFileDialog: () => Promise<string[]>;
       saveFileDialog: (defaultName?: string) => Promise<string | undefined>;
