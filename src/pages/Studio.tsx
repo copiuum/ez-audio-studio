@@ -140,16 +140,6 @@ const Studio = () => {
           </h1>
         </div>
 
-        {/* Navigation - Always Visible */}
-        <div className="mb-6 text-center">
-          <Link to="/advanced">
-            <Button variant="outline" size="sm" className="rounded-sm">
-              <Zap className="h-4 w-4 mr-2" />
-              Advanced Studio
-            </Button>
-          </Link>
-        </div>
-
         <div className="flex justify-center">
           <div className="max-w-md w-full space-y-6">
             <StudioControls
@@ -188,8 +178,18 @@ const Studio = () => {
         </div>
       </div>
       
-      {/* Footer */}
-      <div className="mt-8 text-center">
+      {/* Invisible Advanced Studio Button at Bottom */}
+      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity duration-300">
+        <Link to="/advanced">
+          <Button variant="ghost" size="sm" className="rounded-sm text-muted-foreground hover:text-foreground">
+            <Zap className="h-4 w-4 mr-2" />
+            Advanced Studio
+          </Button>
+        </Link>
+      </div>
+      
+      {/* Footer at Very Bottom */}
+      <div className="fixed bottom-0 left-0 right-0 text-center pb-2">
         <a 
           href="https://guns.lol/copiuum" 
           target="_blank" 
