@@ -57,6 +57,12 @@ export const useAudioProcessor = ({
   const convolutionNodeRef = useRef<ConvolverNode | null>(null);
   const bassBoostFilterRef = useRef<BiquadFilterNode | null>(null);
   const bassBoostHighShelfRef = useRef<BiquadFilterNode | null>(null);
+  
+  // Heavenly reverb processing nodes
+  const reverbPreFilterRef = useRef<BiquadFilterNode | null>(null);
+  const reverbPostFilterRef = useRef<BiquadFilterNode | null>(null);
+  const reverbModulationRef = useRef<OscillatorNode | null>(null);
+  const reverbModulationGainRef = useRef<GainNode | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   
@@ -119,10 +125,44 @@ export const useAudioProcessor = ({
     const length = audioContext.sampleRate * seconds;
     const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
     
+    // Heavenly reverb with multiple layers and modulation
     for (let channel = 0; channel < 2; channel++) {
       const channelData = impulse.getChannelData(channel);
-      for (let i = 0; i < length; i++) {
-        channelData[i] = (Math.random() * 2 - 1) * Math.pow(1 - i / length, decay);
+      
+      // Early reflections (first 50ms) - crisp and defined
+      const earlyReflectionsLength = Math.floor(audioContext.sampleRate * 0.05);
+      for (let i = 0; i < earlyReflectionsLength; i++) {
+        const time = i / earlyReflectionsLength;
+        const earlyDecay = Math.pow(1 - time, 1.5);
+        const modulation = Math.sin(i * 0.1) * 0.3; // Subtle modulation
+        channelData[i] = (Math.random() * 2 - 1) * earlyDecay * (0.8 + modulation);
+      }
+      
+      // Main reverb tail with heavenly characteristics
+      for (let i = earlyReflectionsLength; i < length; i++) {
+        const time = (i - earlyReflectionsLength) / (length - earlyReflectionsLength);
+        
+        // Multi-layered decay for heavenly sound
+        const mainDecay = Math.pow(1 - time, decay * 0.8);
+        const slowDecay = Math.pow(1 - time, decay * 0.3); // Longer tail
+        const fastDecay = Math.pow(1 - time, decay * 1.2); // Quick initial decay
+        
+        // Heavenly modulation and harmonics
+        const modulation1 = Math.sin(i * 0.05) * 0.2; // Slow modulation
+        const modulation2 = Math.sin(i * 0.15) * 0.1; // Medium modulation
+        const modulation3 = Math.sin(i * 0.03) * 0.15; // Very slow modulation
+        
+        // Frequency-dependent decay (more realistic)
+        const frequencyDecay = Math.pow(1 - time, decay * (1 + time * 0.5));
+        
+        // Combine all elements for heavenly reverb
+        const combinedDecay = (mainDecay * 0.4 + slowDecay * 0.3 + fastDecay * 0.2 + frequencyDecay * 0.1);
+        const modulation = 1 + modulation1 + modulation2 + modulation3;
+        
+        // Add some harmonic content for richness
+        const harmonic = Math.sin(i * 0.02) * 0.1 * combinedDecay;
+        
+        channelData[i] = (Math.random() * 2 - 1) * combinedDecay * modulation + harmonic;
       }
     }
     
@@ -213,6 +253,52 @@ export const useAudioProcessor = ({
     return attenuator;
   }, []);
 
+  // Create heavenly reverb processor
+  const createHeavenlyReverb = useCallback((audioContext: BaseAudioContext, reverbAmount: number) => {
+    const currentTime = audioContext.currentTime;
+    
+    // Pre-filter to shape the reverb input
+    if (!reverbPreFilterRef.current) {
+      reverbPreFilterRef.current = audioContext.createBiquadFilter();
+      reverbPreFilterRef.current.type = 'highpass';
+      reverbPreFilterRef.current.frequency.setValueAtTime(80, currentTime); // Remove mud
+      reverbPreFilterRef.current.Q.setValueAtTime(0.7, currentTime);
+    }
+    
+    // Post-filter to add heavenly shimmer
+    if (!reverbPostFilterRef.current) {
+      reverbPostFilterRef.current = audioContext.createBiquadFilter();
+      reverbPostFilterRef.current.type = 'peaking';
+      reverbPostFilterRef.current.frequency.setValueAtTime(8000, currentTime); // Add air
+      reverbPostFilterRef.current.Q.setValueAtTime(1.2, currentTime);
+      reverbPostFilterRef.current.gain.setValueAtTime(reverbAmount * 6, currentTime); // Shimmer effect
+    }
+    
+    // Modulation for ethereal movement
+    if (!reverbModulationRef.current) {
+      reverbModulationRef.current = audioContext.createOscillator();
+      reverbModulationRef.current.type = 'sine';
+      reverbModulationRef.current.frequency.setValueAtTime(0.1, currentTime); // Very slow modulation
+      reverbModulationRef.current.start();
+    }
+    
+    if (!reverbModulationGainRef.current) {
+      reverbModulationGainRef.current = audioContext.createGain();
+      reverbModulationGainRef.current.gain.setValueAtTime(reverbAmount * 0.3, currentTime);
+    }
+    
+    // Connect modulation
+    reverbModulationRef.current.connect(reverbModulationGainRef.current);
+    reverbModulationGainRef.current.connect(reverbPostFilterRef.current.frequency);
+    
+    return {
+      preFilter: reverbPreFilterRef.current,
+      postFilter: reverbPostFilterRef.current,
+      modulation: reverbModulationRef.current,
+      modulationGain: reverbModulationGainRef.current
+    };
+  }, []);
+
   // Update EQ filters with current values
   const updateEQFilters = useCallback((audioContext: BaseAudioContext, advancedEffects: AdvancedAudioEffects) => {
     const filters = eqFiltersRef.current;
@@ -289,9 +375,14 @@ export const useAudioProcessor = ({
       updateEQFilters(audioContext, effects as AdvancedAudioEffects);
     }
 
-    // Create reverb impulse
-    const reverbImpulse = createReverbImpulse(audioContext, 3, effects.reverb * 2);
+    // Create heavenly reverb impulse with enhanced characteristics
+    const reverbDuration = 3 + effects.reverb * 2; // Longer reverb for heavenly effect
+    const reverbDecay = 1.5 + effects.reverb * 1.5; // Enhanced decay
+    const reverbImpulse = createReverbImpulse(audioContext, reverbDuration, reverbDecay);
     convolutionNodeRef.current.buffer = reverbImpulse;
+    
+    // Create heavenly reverb processor
+    const heavenlyReverb = createHeavenlyReverb(audioContext, effects.reverb);
 
     // Update current effects
     gainNodeRef.current.gain.setValueAtTime(effects.volume, audioContext.currentTime);
@@ -327,9 +418,10 @@ export const useAudioProcessor = ({
       bassBoostFilter: bassBoostFilterRef.current, 
       convolutionNode: convolutionNodeRef.current,
       analyserNode: analyserNodeRef.current,
-      eqFilters
+      eqFilters,
+      heavenlyReverb
     };
-  }, [effects.reverb, effects.volume, effects.bassBoost, createReverbImpulse, createEQFilters, updateEQFilters, onVisualizationData]);
+  }, [effects.reverb, effects.volume, effects.bassBoost, createReverbImpulse, createHeavenlyReverb, createEQFilters, updateEQFilters, onVisualizationData]);
 
   const updateEffects = useCallback(() => {
     if (!audioContextRef.current || !gainNodeRef.current || !bassBoostFilterRef.current) return;
@@ -443,14 +535,36 @@ export const useAudioProcessor = ({
         }
       }
       
-      // Create dry/wet mix for reverb (same as export)
+      // Create heavenly reverb processing chain
       const dryGain = audioContext.createGain();
       const wetGain = audioContext.createGain();
+      const reverbPreGain = audioContext.createGain();
+      const reverbPostGain = audioContext.createGain();
       
       // Use exponentialRampToValueAtTime for smoother transitions
       const currentTime = audioContext.currentTime;
       dryGain.gain.setValueAtTime(1 - effects.reverb, currentTime);
       wetGain.gain.setValueAtTime(effects.reverb, currentTime);
+      
+      // Heavenly reverb processing
+      if (reverbPreFilterRef.current && reverbPostFilterRef.current) {
+        reverbPreGain.gain.setValueAtTime(effects.reverb * 0.8, currentTime); // Pre-filter gain
+        reverbPostGain.gain.setValueAtTime(effects.reverb * 1.2, currentTime); // Post-filter gain
+        
+        // Wet signal with heavenly processing
+        lastNode.connect(reverbPreGain);
+        reverbPreGain.connect(reverbPreFilterRef.current);
+        reverbPreFilterRef.current.connect(convolutionNodeRef.current);
+        convolutionNodeRef.current.connect(reverbPostFilterRef.current);
+        reverbPostFilterRef.current.connect(reverbPostGain);
+        reverbPostGain.connect(wetGain);
+        wetGain.connect(analyserNodeRef.current);
+      } else {
+        // Fallback to simple reverb
+        lastNode.connect(convolutionNodeRef.current);
+        convolutionNodeRef.current.connect(wetGain);
+        wetGain.connect(analyserNodeRef.current);
+      }
       
       // Dry signal
       lastNode.connect(dryGain);
@@ -567,9 +681,31 @@ export const useAudioProcessor = ({
       eqFilters.high.gain.setValueAtTime(sliderToDb(advancedEffects.eqHigh || 0.5), offlineContext.currentTime);
     }
 
-    // Create and set reverb impulse
-    const reverbImpulse = createReverbImpulse(offlineContext, 3, effects.reverb * 2);
+    // Create heavenly reverb impulse for export
+    const reverbDuration = 3 + effects.reverb * 2; // Longer reverb for heavenly effect
+    const reverbDecay = 1.5 + effects.reverb * 1.5; // Enhanced decay
+    const reverbImpulse = createReverbImpulse(offlineContext, reverbDuration, reverbDecay);
     convolutionNode.buffer = reverbImpulse;
+    
+    // Create heavenly reverb processing nodes for export
+    const reverbPreFilter = offlineContext.createBiquadFilter();
+    const reverbPostFilter = offlineContext.createBiquadFilter();
+    const reverbPreGain = offlineContext.createGain();
+    const reverbPostGain = offlineContext.createGain();
+    
+    // Configure heavenly reverb filters
+    reverbPreFilter.type = 'highpass';
+    reverbPreFilter.frequency.setValueAtTime(80, offlineContext.currentTime);
+    reverbPreFilter.Q.setValueAtTime(0.7, offlineContext.currentTime);
+    
+    reverbPostFilter.type = 'peaking';
+    reverbPostFilter.frequency.setValueAtTime(8000, offlineContext.currentTime);
+    reverbPostFilter.Q.setValueAtTime(1.2, offlineContext.currentTime);
+    reverbPostFilter.gain.setValueAtTime(effects.reverb * 6, offlineContext.currentTime);
+    
+    // Configure gains
+    reverbPreGain.gain.setValueAtTime(effects.reverb * 0.8, offlineContext.currentTime);
+    reverbPostGain.gain.setValueAtTime(effects.reverb * 1.2, offlineContext.currentTime);
 
     // Connect the graph with EQ filters
     source.connect(gainNode);
@@ -612,7 +748,7 @@ export const useAudioProcessor = ({
       }
     }
     
-    // Create a dry/wet mix for reverb
+    // Create heavenly reverb processing chain for export
     const dryGain = offlineContext.createGain();
     const wetGain = offlineContext.createGain();
     
@@ -623,9 +759,13 @@ export const useAudioProcessor = ({
     lastNode.connect(dryGain);
     dryGain.connect(offlineContext.destination);
     
-    // Connect wet signal through reverb
-    lastNode.connect(convolutionNode);
-    convolutionNode.connect(wetGain);
+    // Connect wet signal through heavenly reverb processing
+    lastNode.connect(reverbPreGain);
+    reverbPreGain.connect(reverbPreFilter);
+    reverbPreFilter.connect(convolutionNode);
+    convolutionNode.connect(reverbPostFilter);
+    reverbPostFilter.connect(reverbPostGain);
+    reverbPostGain.connect(wetGain);
     wetGain.connect(offlineContext.destination);
 
     // Start processing
