@@ -143,8 +143,14 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     if (!isDraggingRef.current || !canvasRef.current || !duration) return;
 
     const rect = canvasRef.current.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const percentage = Math.max(0, Math.min(1, x / width));
+    const canvasX = e.clientX - rect.left;
+    
+    // Account for canvas scaling and ensure we're within bounds
+    const scaleX = width / rect.width;
+    const actualX = canvasX * scaleX;
+    const clampedX = Math.max(0, Math.min(width, actualX));
+    
+    const percentage = clampedX / width;
     const newTime = percentage * duration;
     
     onSeek(newTime);
@@ -153,6 +159,37 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
   const handlePointerUp = useCallback(() => {
     isDraggingRef.current = false;
   }, []);
+
+  // Handle click for immediate seeking
+  const handleClick = useCallback((e: React.MouseEvent) => {
+    if (!canvasRef.current || !duration) return;
+
+    const rect = canvasRef.current.getBoundingClientRect();
+    const canvasX = e.clientX - rect.left;
+    
+    // Account for canvas scaling and ensure we're within bounds
+    const scaleX = width / rect.width;
+    const actualX = canvasX * scaleX;
+    const clampedX = Math.max(0, Math.min(width, actualX));
+    
+    const percentage = clampedX / width;
+    const newTime = percentage * duration;
+    
+    // Debug logging (can be removed in production)
+    console.log('Seek Debug:', {
+      clientX: e.clientX,
+      rectLeft: rect.left,
+      canvasX,
+      scaleX,
+      actualX,
+      clampedX,
+      percentage,
+      newTime,
+      duration
+    });
+    
+    onSeek(newTime);
+  }, [duration, width, onSeek]);
 
   // Draw waveform when data changes
   useEffect(() => {
@@ -164,8 +201,14 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     const handleGlobalPointerMove = (e: PointerEvent) => {
       if (isDraggingRef.current && canvasRef.current && duration) {
         const rect = canvasRef.current.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const percentage = Math.max(0, Math.min(1, x / width));
+        const canvasX = e.clientX - rect.left;
+        
+        // Account for canvas scaling and ensure we're within bounds
+        const scaleX = width / rect.width;
+        const actualX = canvasX * scaleX;
+        const clampedX = Math.max(0, Math.min(width, actualX));
+        
+        const percentage = clampedX / width;
         const newTime = percentage * duration;
         onSeek(newTime);
       }
@@ -203,6 +246,7 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
+      onClick={handleClick}
       style={{ touchAction: 'none' }}
     />
   );
