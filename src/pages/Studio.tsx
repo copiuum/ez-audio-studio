@@ -18,7 +18,7 @@ const Studio = () => {
   const [effects, setEffects] = useState<AudioEffects>({
     // Base effects
     reverb: 0.3,
-    bassBoost: 0.2,
+    bassBoost: 0.0, // Start with no bass boost
     tempo: 0.8,
     volume: 0.7,
   });

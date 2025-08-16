@@ -384,8 +384,22 @@ export const useAudioProcessor = ({
     // Create heavenly reverb processor
     const heavenlyReverb = createHeavenlyReverb(audioContext, effects.reverb);
 
-    // Update current effects
-    gainNodeRef.current.gain.setValueAtTime(effects.volume, audioContext.currentTime);
+    // Update current effects with improved volume scaling to prevent distortion
+    // Convert 0-1 slider to -60dB to +6dB range for professional volume control
+    let volumeGain: number;
+    if (effects.volume === 0) {
+      volumeGain = 0; // Mute
+    } else if (effects.volume <= 0.5) {
+      // 0-50%: -60dB to -6dB (quiet to normal)
+      volumeGain = Math.pow(10, (effects.volume * 2 - 1) * 3) / 10;
+    } else {
+      // 50-100%: -6dB to +6dB (normal to boost)
+      volumeGain = Math.pow(10, (effects.volume - 0.5) * 2.4) / 10;
+    }
+    
+    // Clamp to prevent excessive gain
+    volumeGain = Math.max(0, Math.min(2, volumeGain));
+    gainNodeRef.current.gain.setValueAtTime(volumeGain, audioContext.currentTime);
     
     // Improved bass boost with smoother curve and reduced distortion
     const bassBoostValue = effects.bassBoost;
@@ -429,8 +443,21 @@ export const useAudioProcessor = ({
     const audioContext = audioContextRef.current;
     const currentTime = audioContext.currentTime;
 
-    // Update volume
-    gainNodeRef.current.gain.setValueAtTime(effects.volume, currentTime);
+    // Update volume with improved scaling to prevent distortion
+    let volumeGain: number;
+    if (effects.volume === 0) {
+      volumeGain = 0; // Mute
+    } else if (effects.volume <= 0.5) {
+      // 0-50%: -60dB to -6dB (quiet to normal)
+      volumeGain = Math.pow(10, (effects.volume * 2 - 1) * 3) / 10;
+    } else {
+      // 50-100%: -6dB to +6dB (normal to boost)
+      volumeGain = Math.pow(10, (effects.volume - 0.5) * 2.4) / 10;
+    }
+    
+    // Clamp to prevent excessive gain
+    volumeGain = Math.max(0, Math.min(2, volumeGain));
+    gainNodeRef.current.gain.setValueAtTime(volumeGain, currentTime);
 
     // Update bass boost with improved smoothing
     const bassBoostValue = effects.bassBoost;
@@ -638,8 +665,21 @@ export const useAudioProcessor = ({
     source.buffer = originalBuffer;
     source.playbackRate.setValueAtTime(effects.tempo, offlineContext.currentTime);
 
-    // Configure nodes
-    gainNode.gain.setValueAtTime(effects.volume, offlineContext.currentTime);
+    // Configure nodes with improved volume scaling
+    let volumeGain: number;
+    if (effects.volume === 0) {
+      volumeGain = 0; // Mute
+    } else if (effects.volume <= 0.5) {
+      // 0-50%: -60dB to -6dB (quiet to normal)
+      volumeGain = Math.pow(10, (effects.volume * 2 - 1) * 3) / 10;
+    } else {
+      // 50-100%: -6dB to +6dB (normal to boost)
+      volumeGain = Math.pow(10, (effects.volume - 0.5) * 2.4) / 10;
+    }
+    
+    // Clamp to prevent excessive gain
+    volumeGain = Math.max(0, Math.min(2, volumeGain));
+    gainNode.gain.setValueAtTime(volumeGain, offlineContext.currentTime);
     
     bassBoostFilter.type = 'lowshelf';
     // Use same improved settings as real-time processing
