@@ -516,7 +516,7 @@ export const useAudioProcessor = ({
         }
       }
       
-      // Create heavenly reverb processing chain
+      // Create simple reverb processing chain (same as export)
       const dryGain = audioContext.createGain();
       const wetGain = audioContext.createGain();
       const reverbPreGain = audioContext.createGain();
@@ -527,12 +527,12 @@ export const useAudioProcessor = ({
       dryGain.gain.setValueAtTime(1 - effects.reverb, currentTime);
       wetGain.gain.setValueAtTime(effects.reverb, currentTime);
       
-      // Heavenly reverb processing
+      // Simple reverb processing (same as export)
       if (reverbPreFilterRef.current && reverbPostFilterRef.current) {
-        reverbPreGain.gain.setValueAtTime(effects.reverb * 0.8, currentTime); // Pre-filter gain
-        reverbPostGain.gain.setValueAtTime(effects.reverb * 1.2, currentTime); // Post-filter gain
+        reverbPreGain.gain.setValueAtTime(effects.reverb * 0.8, currentTime);
+        reverbPostGain.gain.setValueAtTime(effects.reverb * 1.0, currentTime);
         
-        // Wet signal with heavenly processing
+        // Wet signal with simple processing
         lastNode.connect(reverbPreGain);
         reverbPreGain.connect(reverbPreFilterRef.current);
         reverbPreFilterRef.current.connect(convolutionNodeRef.current);
@@ -550,11 +550,6 @@ export const useAudioProcessor = ({
       // Dry signal
       lastNode.connect(dryGain);
       dryGain.connect(analyserNodeRef.current);
-      
-      // Wet signal
-      lastNode.connect(convolutionNodeRef.current);
-      convolutionNodeRef.current.connect(wetGain);
-      wetGain.connect(analyserNodeRef.current);
     }
 
     // Handle when the audio naturally ends
@@ -580,6 +575,9 @@ export const useAudioProcessor = ({
 
     // Create nodes for offline processing
     const source = offlineContext.createBufferSource();
+    source.buffer = originalBuffer;
+    source.playbackRate.setValueAtTime(effects.tempo, offlineContext.currentTime);
+    
     const gainNode = offlineContext.createGain();
     const convolutionNode = offlineContext.createConvolver();
     const bassBoostFilter = offlineContext.createBiquadFilter();
@@ -652,7 +650,7 @@ export const useAudioProcessor = ({
       bassGain = 6 + (bassBoostValue - 0.5) * 18;
     }
     
-    bassBoostFilter.gain.setValueAtTime(bassGain, offlineContext.currentTime);
+    bassBoostFilter.gain.setValueAtTime(Math.pow(10, bassGain / 20), offlineContext.currentTime);
     
     // Configure high-shelf filter for export
     bassBoostHighShelf.type = 'highshelf';
@@ -661,7 +659,7 @@ export const useAudioProcessor = ({
     
     // Apply subtle high-shelf to complement bass boost and reduce muddiness
     const highShelfGain = bassBoostValue > 0.3 ? (bassBoostValue - 0.3) * 3 : 0; // 0-2.1dB
-    bassBoostHighShelf.gain.setValueAtTime(highShelfGain, offlineContext.currentTime);
+    bassBoostHighShelf.gain.setValueAtTime(Math.pow(10, highShelfGain / 20), offlineContext.currentTime);
 
     // Update EQ filters with current values
     if ('eqLow' in effects) {
