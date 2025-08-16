@@ -3,6 +3,16 @@
 
 use tauri::{AppHandle, Manager, Menu, MenuItem, Submenu, WindowEvent};
 use tauri_plugin_dialog::{DialogExt, MessageDialogKind};
+use serde_json;
+use std::path::PathBuf;
+
+mod audio_types;
+mod audio_loader;
+mod audio_processor;
+
+use audio_types::{AudioBuffer, AdvancedAudioEffects};
+use audio_loader::AudioLoader;
+use audio_processor::AudioProcessor;
 
 // Learn more about Tauri commands at https://tauri.app/v1/guides/features/command
 #[tauri::command]
@@ -27,13 +37,13 @@ async fn save_file_dialog(app: AppHandle, default_name: Option<String>) -> Resul
     let mut dialog = app
         .dialog()
         .file()
-        .add_filter("MP3 Files", &["mp3"])
+        .add_filter("WAV Files", &["wav"])
         .add_filter("All Files", &["*"]);
 
     if let Some(name) = default_name {
         dialog = dialog.set_file_name(&name);
     } else {
-        dialog = dialog.set_file_name("processed-audio.mp3");
+        dialog = dialog.set_file_name("processed-audio.wav");
     }
 
     let file_path = dialog
@@ -42,6 +52,59 @@ async fn save_file_dialog(app: AppHandle, default_name: Option<String>) -> Resul
         .map_err(|e| e.to_string())?;
 
     Ok(file_path.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+async fn load_audio_file(file_path: String) -> Result<AudioBuffer, String> {
+    AudioLoader::load_audio_file(&file_path)
+        .map_err(|e| format!("Failed to load audio file: {}", e))
+}
+
+#[tauri::command]
+async fn process_audio_with_effects(
+    audio_buffer: AudioBuffer,
+    effects: AdvancedAudioEffects,
+) -> Result<AudioBuffer, String> {
+    AudioProcessor::process_audio(audio_buffer, &effects)
+        .map_err(|e| format!("Failed to process audio: {}", e))
+}
+
+#[tauri::command]
+async fn save_audio_file(
+    audio_buffer: AudioBuffer,
+    output_path: String,
+) -> Result<(), String> {
+    AudioLoader::save_as_wav(&audio_buffer, &output_path)
+        .map_err(|e| format!("Failed to save audio file: {}", e))
+}
+
+#[tauri::command]
+async fn get_audio_analysis(audio_buffer: AudioBuffer) -> Result<serde_json::Value, String> {
+    let mut peak_levels = Vec::new();
+    let mut rms_levels = Vec::new();
+    
+    for channel in &audio_buffer.channels {
+        let peak = channel.iter().map(|s| s.abs()).fold(0.0f32, f32::max);
+        let rms = (channel.iter().map(|s| s * s).sum::<f32>() / channel.len() as f32).sqrt();
+        
+        peak_levels.push(peak);
+        rms_levels.push(rms);
+    }
+    
+    let analysis = serde_json::json!({
+        "peak_levels": peak_levels,
+        "rms_levels": rms_levels,
+        "sample_rate": audio_buffer.sample_rate,
+        "channels": audio_buffer.channels.len(),
+        "duration": audio_buffer.duration,
+        "samples_per_channel": if !audio_buffer.channels.is_empty() { 
+            audio_buffer.channels[0].len() 
+        } else { 
+            0 
+        }
+    });
+    
+    Ok(analysis)
 }
 
 fn create_menu() -> Menu {
@@ -151,7 +214,14 @@ fn main() {
                 window.app_handle().exit(0);
             }
         })
-        .invoke_handler(tauri::generate_handler![open_file_dialog, save_file_dialog])
+        .invoke_handler(tauri::generate_handler![
+            open_file_dialog, 
+            save_file_dialog, 
+            load_audio_file, 
+            process_audio_with_effects, 
+            save_audio_file,
+            get_audio_analysis
+        ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

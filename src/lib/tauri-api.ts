@@ -22,77 +22,48 @@ class TauriAPI {
     }
   }
 
-  async openFileDialog(): Promise<string[]> {
+  async invoke<T = any>(command: string, args?: Record<string, any>): Promise<T> {
     await this.ensureReady();
     if (!this.isReady || !this.tauriCore) {
-      console.warn('File dialog not available in browser mode');
-      return [];
+      throw new Error('Tauri APIs not available in browser mode');
     }
     
     try {
-      return await this.tauriCore.invoke('open_file_dialog');
+      return await this.tauriCore.invoke(command, args);
     } catch (error) {
-      console.error('Failed to open file dialog:', error);
-      return [];
+      console.error(`Failed to invoke Tauri command ${command}:`, error);
+      throw error;
     }
   }
 
+  async openFileDialog(): Promise<string[]> {
+    return this.invoke('open_file_dialog');
+  }
+
   async saveFileDialog(defaultName?: string): Promise<string | undefined> {
-    await this.ensureReady();
-    if (!this.isReady || !this.tauriCore) {
-      console.warn('Save dialog not available in browser mode');
-      return undefined;
-    }
-    
-    try {
-      const result = await this.tauriCore.invoke('save_file_dialog', { defaultName });
-      return result || undefined;
-    } catch (error) {
-      console.error('Failed to open save dialog:', error);
-      return undefined;
-    }
+    return this.invoke('save_file_dialog', { defaultName });
   }
 
   async onMenuOpenFile(callback: () => void): Promise<void> {
     await this.ensureReady();
-    if (!this.isReady || !this.tauriEvent) {
-      console.warn('Menu events not available in browser mode');
-      return;
-    }
+    if (!this.isReady || !this.tauriEvent) return;
     
-    try {
-      const unlisten = await this.tauriEvent.listen('menu-open-file', callback);
-      this.addListener('menu-open-file', unlisten);
-    } catch (error) {
-      console.error('Failed to listen for menu open event:', error);
-    }
+    const unlisten = await this.tauriEvent.listen('menu-open-file', callback);
+    this.addListener('menu-open-file', unlisten);
   }
 
   async onMenuExportFile(callback: () => void): Promise<void> {
     await this.ensureReady();
-    if (!this.isReady || !this.tauriEvent) {
-      console.warn('Menu events not available in browser mode');
-      return;
-    }
+    if (!this.isReady || !this.tauriEvent) return;
     
-    try {
-      const unlisten = await this.tauriEvent.listen('menu-export-file', callback);
-      this.addListener('menu-export-file', unlisten);
-    } catch (error) {
-      console.error('Failed to listen for menu export event:', error);
-    }
+    const unlisten = await this.tauriEvent.listen('menu-export-file', callback);
+    this.addListener('menu-export-file', unlisten);
   }
 
   removeAllListeners(channel: string): void {
     const listeners = this.listeners.get(channel);
     if (listeners) {
-      listeners.forEach(unlisten => {
-        try {
-          unlisten();
-        } catch (error) {
-          console.error('Failed to remove listener:', error);
-        }
-      });
+      listeners.forEach(unlisten => unlisten());
       this.listeners.delete(channel);
     }
   }
@@ -113,14 +84,11 @@ class TauriAPI {
   }
 }
 
-// Create singleton instance
 let tauriAPIInstance: TauriAPI | null = null;
 
 export const getTauriAPI = (): TauriAPI => {
   if (!tauriAPIInstance) {
     tauriAPIInstance = new TauriAPI();
-    
-    // Make it available globally for backward compatibility
     if (typeof window !== 'undefined') {
       (window as any).tauriAPI = tauriAPIInstance;
     }
