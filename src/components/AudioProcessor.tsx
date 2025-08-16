@@ -56,6 +56,7 @@ export const useAudioProcessor = ({
   const gainNodeRef = useRef<GainNode | null>(null);
   const convolutionNodeRef = useRef<ConvolverNode | null>(null);
   const bassBoostFilterRef = useRef<BiquadFilterNode | null>(null);
+  const bassBoostHighShelfRef = useRef<BiquadFilterNode | null>(null);
   const analyserNodeRef = useRef<AnalyserNode | null>(null);
   const audioBufferRef = useRef<AudioBuffer | null>(null);
   
@@ -254,7 +255,17 @@ export const useAudioProcessor = ({
     if (!bassBoostFilterRef.current) {
       bassBoostFilterRef.current = audioContext.createBiquadFilter();
       bassBoostFilterRef.current.type = 'lowshelf';
-      bassBoostFilterRef.current.frequency.setValueAtTime(200, audioContext.currentTime);
+      // Use a lower frequency for smoother bass boost
+      bassBoostFilterRef.current.frequency.setValueAtTime(120, audioContext.currentTime);
+      // Set Q to 0.7 for smoother response (less resonant)
+      bassBoostFilterRef.current.Q.setValueAtTime(0.7, audioContext.currentTime);
+    }
+    if (!bassBoostHighShelfRef.current) {
+      bassBoostHighShelfRef.current = audioContext.createBiquadFilter();
+      bassBoostHighShelfRef.current.type = 'highshelf';
+      // Subtle high-shelf to complement bass boost
+      bassBoostHighShelfRef.current.frequency.setValueAtTime(8000, audioContext.currentTime);
+      bassBoostHighShelfRef.current.Q.setValueAtTime(0.5, audioContext.currentTime);
     }
     if (!analyserNodeRef.current) {
       analyserNodeRef.current = audioContext.createAnalyser();
@@ -284,8 +295,32 @@ export const useAudioProcessor = ({
 
     // Update current effects
     gainNodeRef.current.gain.setValueAtTime(effects.volume, audioContext.currentTime);
-    const bassGain = effects.bassBoost * 20;
-    bassBoostFilterRef.current.gain.setValueAtTime(bassGain, audioContext.currentTime);
+    
+    // Improved bass boost with smoother curve and reduced distortion
+    const bassBoostValue = effects.bassBoost;
+    let bassGain: number;
+    
+    if (bassBoostValue <= 0.5) {
+      // Gentle boost for lower values (0-0.5): 0-6dB
+      bassGain = bassBoostValue * 12;
+    } else {
+      // More aggressive but controlled boost for higher values (0.5-1): 6-15dB
+      bassGain = 6 + (bassBoostValue - 0.5) * 18;
+    }
+    
+    // Use exponentialRampToValueAtTime for smoother transitions
+    const currentTime = audioContext.currentTime;
+    bassBoostFilterRef.current.gain.exponentialRampToValueAtTime(
+      Math.pow(10, bassGain / 20), // Convert dB to linear gain
+      currentTime + 0.1 // 100ms ramp time
+    );
+    
+    // Apply subtle high-shelf to complement bass boost and reduce muddiness
+    const highShelfGain = bassBoostValue > 0.3 ? (bassBoostValue - 0.3) * 3 : 0; // 0-2.1dB
+    bassBoostHighShelfRef.current.gain.exponentialRampToValueAtTime(
+      Math.pow(10, highShelfGain / 20),
+      currentTime + 0.1
+    );
 
     return { 
       gainNode: gainNodeRef.current, 
@@ -305,9 +340,30 @@ export const useAudioProcessor = ({
     // Update volume
     gainNodeRef.current.gain.setValueAtTime(effects.volume, currentTime);
 
-    // Update bass boost
-    const bassGain = effects.bassBoost * 20; // 0-20 dB boost
-    bassBoostFilterRef.current.gain.setValueAtTime(bassGain, currentTime);
+    // Update bass boost with improved smoothing
+    const bassBoostValue = effects.bassBoost;
+    let bassGain: number;
+    
+    if (bassBoostValue <= 0.5) {
+      // Gentle boost for lower values (0-0.5): 0-6dB
+      bassGain = bassBoostValue * 12;
+    } else {
+      // More aggressive but controlled boost for higher values (0.5-1): 6-15dB
+      bassGain = 6 + (bassBoostValue - 0.5) * 18;
+    }
+    
+    // Use exponentialRampToValueAtTime for smoother transitions
+    bassBoostFilterRef.current.gain.exponentialRampToValueAtTime(
+      Math.pow(10, bassGain / 20), // Convert dB to linear gain
+      currentTime + 0.05 // 50ms ramp time for real-time updates
+    );
+    
+    // Apply subtle high-shelf to complement bass boost and reduce muddiness
+    const highShelfGain = bassBoostValue > 0.3 ? (bassBoostValue - 0.3) * 3 : 0; // 0-2.1dB
+    bassBoostHighShelfRef.current.gain.exponentialRampToValueAtTime(
+      Math.pow(10, highShelfGain / 20),
+      currentTime + 0.05
+    );
 
     // Update EQ filters if advanced effects are present
     if ('eqLow' in effects) {
@@ -353,12 +409,13 @@ export const useAudioProcessor = ({
     sourceNode.playbackRate.setValueAtTime(effects.tempo, audioContext.currentTime);
     
     // Connect to existing effect chain for consistent preview
-    if (gainNodeRef.current && bassBoostFilterRef.current && convolutionNodeRef.current && analyserNodeRef.current) {
+    if (gainNodeRef.current && bassBoostFilterRef.current && bassBoostHighShelfRef.current && convolutionNodeRef.current && analyserNodeRef.current) {
       sourceNode.connect(gainNodeRef.current);
       gainNodeRef.current.connect(bassBoostFilterRef.current);
+      bassBoostFilterRef.current.connect(bassBoostHighShelfRef.current);
       
       // Connect EQ filters in series if advanced effects are present
-      let lastNode: AudioNode = bassBoostFilterRef.current;
+      let lastNode: AudioNode = bassBoostHighShelfRef.current;
       if ('eqLow' in effects) {
         const advancedEffects = effects as AdvancedAudioEffects;
         const eqFilters = eqFiltersRef.current;
@@ -431,6 +488,7 @@ export const useAudioProcessor = ({
     const gainNode = offlineContext.createGain();
     const convolutionNode = offlineContext.createConvolver();
     const bassBoostFilter = offlineContext.createBiquadFilter();
+    const bassBoostHighShelf = offlineContext.createBiquadFilter();
 
     // Create EQ filters for offline processing
     const eqFilters = {
@@ -470,8 +528,32 @@ export const useAudioProcessor = ({
     gainNode.gain.setValueAtTime(effects.volume, offlineContext.currentTime);
     
     bassBoostFilter.type = 'lowshelf';
-    bassBoostFilter.frequency.setValueAtTime(200, offlineContext.currentTime);
-    bassBoostFilter.gain.setValueAtTime(effects.bassBoost * 20, offlineContext.currentTime);
+    // Use same improved settings as real-time processing
+    bassBoostFilter.frequency.setValueAtTime(120, offlineContext.currentTime);
+    bassBoostFilter.Q.setValueAtTime(0.7, offlineContext.currentTime);
+    
+    // Apply same improved bass boost curve
+    const bassBoostValue = effects.bassBoost;
+    let bassGain: number;
+    
+    if (bassBoostValue <= 0.5) {
+      // Gentle boost for lower values (0-0.5): 0-6dB
+      bassGain = bassBoostValue * 12;
+    } else {
+      // More aggressive but controlled boost for higher values (0.5-1): 6-15dB
+      bassGain = 6 + (bassBoostValue - 0.5) * 18;
+    }
+    
+    bassBoostFilter.gain.setValueAtTime(bassGain, offlineContext.currentTime);
+    
+    // Configure high-shelf filter for export
+    bassBoostHighShelf.type = 'highshelf';
+    bassBoostHighShelf.frequency.setValueAtTime(8000, offlineContext.currentTime);
+    bassBoostHighShelf.Q.setValueAtTime(0.5, offlineContext.currentTime);
+    
+    // Apply subtle high-shelf to complement bass boost and reduce muddiness
+    const highShelfGain = bassBoostValue > 0.3 ? (bassBoostValue - 0.3) * 3 : 0; // 0-2.1dB
+    bassBoostHighShelf.gain.setValueAtTime(highShelfGain, offlineContext.currentTime);
 
     // Update EQ filters with current values
     if ('eqLow' in effects) {
@@ -492,9 +574,10 @@ export const useAudioProcessor = ({
     // Connect the graph with EQ filters
     source.connect(gainNode);
     gainNode.connect(bassBoostFilter);
+    bassBoostFilter.connect(bassBoostHighShelf);
     
     // Connect EQ filters in series if advanced effects are present
-    let lastNode: AudioNode = bassBoostFilter;
+    let lastNode: AudioNode = bassBoostHighShelf;
     if ('eqLow' in effects) {
       const advancedEffects = effects as AdvancedAudioEffects;
       lastNode.connect(eqFilters.low);
