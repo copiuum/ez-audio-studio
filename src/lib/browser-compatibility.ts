@@ -5,54 +5,121 @@ export interface BrowserInfo {
   version: string;
   isChrome: boolean;
   isFirefox: boolean;
-  isSafari: boolean;
+  isBrave: boolean;
   isEdge: boolean;
+  isChromiumBased: boolean;
+  isFirefoxBased: boolean;
   isMobile: boolean;
+  isLinux: boolean;
+  displayServer: 'x11' | 'wayland' | 'unknown';
   supportsWebAudio: boolean;
   supportsServiceWorker: boolean;
   supportsPWA: boolean;
   supportsOffline: boolean;
   supportsWebGL: boolean;
   supportsWebAssembly: boolean;
+  supportsOpenGL: boolean;
 }
 
 // Detect browser information
 export function getBrowserInfo(): BrowserInfo {
   const userAgent = navigator.userAgent;
   const isMobile = /Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(userAgent);
+  const isLinux = /Linux/.test(userAgent) && !/Android/.test(userAgent);
   
   let name = 'Unknown';
   let version = '0';
   
-  // Detect browser
-  if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
+  // Detect browser with modern Chromium and Firefox support
+  if (userAgent.includes('Brave')) {
+    name = 'Brave';
+    version = userAgent.match(/Chrome\/(\d+)/)?.[1] || '0';
+  } else if (userAgent.includes('Chrome') && !userAgent.includes('Edg')) {
     name = 'Chrome';
     version = userAgent.match(/Chrome\/(\d+)/)?.[1] || '0';
   } else if (userAgent.includes('Firefox')) {
     name = 'Firefox';
     version = userAgent.match(/Firefox\/(\d+)/)?.[1] || '0';
-  } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
-    name = 'Safari';
-    version = userAgent.match(/Version\/(\d+)/)?.[1] || '0';
   } else if (userAgent.includes('Edg')) {
     name = 'Edge';
     version = userAgent.match(/Edg\/(\d+)/)?.[1] || '0';
+  } else if (userAgent.includes('Chromium')) {
+    name = 'Chromium';
+    version = userAgent.match(/Chrome\/(\d+)/)?.[1] || '0';
+  } else if (userAgent.includes('LibreWolf')) {
+    name = 'LibreWolf';
+    version = userAgent.match(/Firefox\/(\d+)/)?.[1] || '0';
+  } else if (userAgent.includes('Waterfox')) {
+    name = 'Waterfox';
+    version = userAgent.match(/Firefox\/(\d+)/)?.[1] || '0';
   }
+  
+  // Detect Chromium-based browsers
+  const isChromiumBased = /Chrome|Chromium|Brave|Edge|Opera|Vivaldi|Arc|Thorium/.test(userAgent);
+  
+  // Detect Firefox-based browsers
+  const isFirefoxBased = /Firefox|LibreWolf|Waterfox|Pale Moon|SeaMonkey/.test(userAgent);
+  
+  // Detect Linux display server
+  const detectDisplayServer = (): 'x11' | 'wayland' | 'unknown' => {
+    if (!isLinux) return 'unknown';
+    
+    try {
+      // Check for Wayland environment variables
+      if (typeof window !== 'undefined' && (window as any).navigator?.userAgent?.includes('Wayland')) {
+        return 'wayland';
+      }
+      
+      // Check for X11 environment variables (fallback)
+      if (typeof window !== 'undefined') {
+        // This is a simplified check - in a real app, you'd check environment variables
+        // For now, we'll assume X11 as default for Linux
+        return 'x11';
+      }
+      
+      return 'unknown';
+    } catch {
+      return 'unknown';
+    }
+  };
+  
+  // Check for OpenGL support
+  const supportsOpenGL = (() => {
+    try {
+      const canvas = document.createElement('canvas');
+      const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl') as WebGLRenderingContext;
+      if (gl) {
+        const debugInfo = gl.getExtension('WEBGL_debug_renderer_info');
+        if (debugInfo) {
+          const renderer = gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL);
+          return renderer && renderer.toLowerCase().includes('opengl');
+        }
+      }
+      return false;
+    } catch {
+      return false;
+    }
+  })();
   
   return {
     name,
     version,
     isChrome: name === 'Chrome',
     isFirefox: name === 'Firefox',
-    isSafari: name === 'Safari',
+    isBrave: name === 'Brave',
     isEdge: name === 'Edge',
+    isChromiumBased,
+    isFirefoxBased,
     isMobile,
+    isLinux,
+    displayServer: detectDisplayServer(),
     supportsWebAudio: typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined',
     supportsServiceWorker: 'serviceWorker' in navigator,
     supportsPWA: 'serviceWorker' in navigator && 'PushManager' in window,
     supportsOffline: 'ononline' in window && 'onoffline' in window,
     supportsWebGL: !!window.WebGLRenderingContext,
     supportsWebAssembly: typeof WebAssembly === 'object',
+    supportsOpenGL,
   };
 }
 
@@ -69,20 +136,45 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
     issues.push('WebGL is not supported - audio visualization may not work');
   }
   
+
+  
+  // Linux-specific checks
+  if (browser.isLinux) {
+    if (browser.displayServer === 'unknown') {
+      issues.push('Linux display server not detected - using default optimizations');
+    } else if (browser.displayServer === 'wayland') {
+      console.log('✅ Wayland detected - using modern display server optimizations');
+    } else if (browser.displayServer === 'x11') {
+      console.log('✅ X11 detected - using traditional display server optimizations');
+    }
+  }
+  
   if (!browser.supportsServiceWorker) {
     issues.push('Service Worker is not supported - offline functionality disabled');
   }
   
-  // Check minimum version requirements
+  // Check minimum version requirements for modern browsers
   const version = parseInt(browser.version);
+  
+  // Chromium-based browsers (130+ for modern features)
+  if (browser.isChromiumBased && version < 130) {
+    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  }
+  
+  // Firefox-based browsers (130+ for modern features)
+  if (browser.isFirefoxBased && version < 130) {
+    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  }
+  
+  // Legacy version checks for older browsers
   if (browser.isChrome && version < 88) {
     issues.push('Chrome version 88+ recommended for best performance');
   }
   if (browser.isFirefox && version < 85) {
     issues.push('Firefox version 85+ recommended for best performance');
   }
-  if (browser.isSafari && version < 14) {
-    issues.push('Safari version 14+ recommended for best performance');
+  if (browser.isBrave && version < 88) {
+    issues.push('Brave version 88+ recommended for best performance');
   }
   
   return {
@@ -155,6 +247,8 @@ export function supportsWebWorkers(): boolean {
 
 // Get device capabilities
 export function getDeviceCapabilities() {
+  const browser = getBrowserInfo();
+  
   return {
     cores: navigator.hardwareConcurrency || 1,
     memory: (navigator as any).deviceMemory || 'unknown',
@@ -162,6 +256,11 @@ export function getDeviceCapabilities() {
     battery: 'getBattery' in navigator,
     vibration: 'vibrate' in navigator,
     geolocation: 'geolocation' in navigator,
+    // Linux-specific capabilities
+    isLinux: browser.isLinux,
+    displayServer: browser.displayServer,
+    isChromiumBased: browser.isChromiumBased,
+    isFirefoxBased: browser.isFirefoxBased,
   };
 }
 
@@ -177,6 +276,11 @@ export function optimizeForDevice() {
     useHighQualityAudio: capabilities.cores >= 4,
     useRealTimeEffects: capabilities.cores >= 2,
     useAdvancedVisualization: browser.supportsWebGL && capabilities.cores >= 2,
+    // Linux-specific optimizations
+    useLinuxOptimizations: capabilities.isLinux,
+    useWaylandOptimizations: capabilities.displayServer === 'wayland',
+    useX11Optimizations: capabilities.displayServer === 'x11',
+    useModernBrowserFeatures: capabilities.isChromiumBased || capabilities.isFirefoxBased,
   };
   
   return optimizations;

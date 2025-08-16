@@ -13,6 +13,9 @@ export default defineConfig(({ mode }) => ({
       'X-Frame-Options': 'DENY',
       'X-XSS-Protection': '1; mode=block',
       'Referrer-Policy': 'strict-origin-when-cross-origin',
+      // WebGL performance headers for OpenGL optimization
+      'Cross-Origin-Opener-Policy': 'same-origin',
+      'Cross-Origin-Embedder-Policy': 'require-corp',
     },
   },
   base: './',
@@ -27,8 +30,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
-    // Optimize for modern browsers
-    target: ['es2020', 'chrome88', 'firefox85', 'safari14'],
+    // Optimize for modern browsers (130+ versions for latest features)
+    target: ['es2022', 'chrome130', 'firefox130'],
     // Enable source maps for debugging
     sourcemap: mode === 'development',
     // Optimize chunk splitting
@@ -90,5 +93,6 @@ export default defineConfig(({ mode }) => ({
   define: {
     __DEV__: mode === 'development',
     __PROD__: mode === 'production',
+    __SUPPORTS_OPENGL__: true, // Enable OpenGL optimizations
   },
 }));

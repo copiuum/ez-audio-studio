@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card';
 import { Play, Pause, Square, Upload, Download, Volume2, Music, Zap } from 'lucide-react';
 import { AudioEffects, AdvancedAudioEffects } from './AudioProcessor';
 import { WaveformSeek } from './WaveformSeek';
+import { toast } from '@/hooks/use-toast';
 
 interface StudioControlsProps {
   effects: AudioEffects | AdvancedAudioEffects;
@@ -20,6 +21,7 @@ interface StudioControlsProps {
   currentTime: number;
   duration: number;
   audioBuffer?: AudioBuffer | null;
+  isProcessing?: boolean;
 }
 
 export const StudioControls: React.FC<StudioControlsProps> = ({
@@ -36,12 +38,35 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
   currentTime,
   duration,
   audioBuffer,
+  isProcessing = false,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
     if (file) {
+      // Validate file size (50MB limit)
+      const maxSize = 50 * 1024 * 1024; // 50MB
+      if (file.size > maxSize) {
+        toast({
+          title: "File too large",
+          description: "Please select a file smaller than 50MB",
+          variant: "destructive",
+        });
+        return;
+      }
+
+      // Validate file type
+      const validTypes = ['audio/mpeg', 'audio/wav', 'audio/ogg', 'audio/mp4', 'audio/aac', 'audio/flac'];
+      if (!validTypes.includes(file.type) && !file.name.match(/\.(mp3|wav|ogg|m4a|aac|flac)$/i)) {
+        toast({
+          title: "Unsupported file type",
+          description: "Please select an audio file (MP3, WAV, OGG, M4A, AAC, FLAC)",
+          variant: "destructive",
+        });
+        return;
+      }
+
       onFileImport(file);
     }
   };
@@ -74,11 +99,21 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
           <Button 
             variant="studio" 
             onClick={handleImportClick}
+            disabled={isProcessing}
             className="flex-1 cursor-pointer"
             size="sm"
           >
-            <Upload className="w-4 h-4 mr-2" />
-            Import
+            {isProcessing ? (
+              <>
+                <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white mr-2"></div>
+                Processing...
+              </>
+            ) : (
+              <>
+                <Upload className="w-4 h-4 mr-2" />
+                Import
+              </>
+            )}
           </Button>
           <Button 
             variant="studio" 
@@ -102,6 +137,8 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
             disabled={!hasAudio || isPlaying}
             size="sm"
             className="flex-1 max-w-[90px]"
+            aria-label="Play audio"
+            title="Play (Space)"
           >
             <Play className="w-4 h-4 mr-2" />
             Play
@@ -112,6 +149,8 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
             disabled={!hasAudio || !isPlaying}
             size="sm"
             className="flex-1 max-w-[90px]"
+            aria-label="Pause audio"
+            title="Pause (Space)"
           >
             <Pause className="w-4 h-4 mr-2" />
             Pause
@@ -122,6 +161,8 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
             disabled={!hasAudio}
             size="sm"
             className="flex-1 max-w-[90px]"
+            aria-label="Stop audio"
+            title="Stop (S)"
           >
             <Square className="w-4 h-4 mr-2" />
             Stop

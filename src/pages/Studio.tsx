@@ -7,8 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
-import { Link } from 'react-router-dom';
-import { Zap, Settings, Mic } from 'lucide-react';
+import { Settings, Mic } from 'lucide-react';
 import lamejs from '@breezystack/lamejs';
 
 const Studio = () => {
@@ -28,6 +27,7 @@ const Studio = () => {
   const [processedAudioBuffer, setProcessedAudioBuffer] = useState<AudioBuffer | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
   const [isExporting, setIsExporting] = useState<boolean>(false);
+  const [isProcessing, setIsProcessing] = useState<boolean>(false);
 
   // Performance optimization: Debounced effect updates
   const effectUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -43,12 +43,16 @@ const Studio = () => {
     }, 100); // 100ms debounce for smooth slider interaction
   }, []);
 
-  const { play, pause, stop, seek, isPlaying, currentTime, duration, audioContext } = useAudioProcessor({
+  const audioProcessor = useAudioProcessor({
     audioFile,
     effects,
     onProcessedAudio: setProcessedAudioBuffer,
     onVisualizationData: setAnalyserNode,
   });
+
+  const { play, pause, stop, seek, isPlaying, currentTime, duration, audioContext } = audioProcessor;
+
+
 
   // Hide title after 30 seconds
   useEffect(() => {
@@ -78,28 +82,48 @@ const Studio = () => {
   const handleFileImport = useCallback(async (file: File) => {
     setAudioFile(file);
     setOriginalFileName(file.name);
+    setIsProcessing(true);
     
-    // Decode audio file to get AudioBuffer for waveform
-    try {
-      const arrayBuffer = await file.arrayBuffer();
-      const audioContext = new AudioContext();
-      const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      setAudioBuffer(decodedBuffer);
-    } catch (error) {
-      console.error('Error decoding audio file:', error);
+    // Performance warning for large files
+    const fileSizeMB = file.size / (1024 * 1024);
+    if (fileSizeMB > 10) {
+      toast({
+        title: "Large file detected",
+        description: `${fileSizeMB.toFixed(1)}MB file may take longer to process`,
+        variant: "default",
+      });
     }
     
-    toast({
-      title: "Audio imported",
-      description: `Successfully loaded ${file.name}`,
-    });
-  }, []);
+    try {
+      // Process audio file through the audio processor
+      const audioBuffer = await audioProcessor.processAudioFile(file);
+      setAudioBuffer(audioBuffer);
+      
+      toast({
+        title: "Audio imported",
+        description: `Successfully loaded ${file.name}`,
+      });
+    } catch (error) {
+      console.error('Error processing audio file:', error);
+      toast({
+        title: "Import failed",
+        description: "Failed to load audio file. Please try again.",
+        variant: "destructive",
+      });
+      // Reset state on error
+      setAudioFile(null);
+      setOriginalFileName('');
+      setAudioBuffer(null);
+    } finally {
+      setIsProcessing(false);
+    }
+  }, [audioProcessor]);
 
   const handleExport = useCallback(async () => {
-    if (!processedAudioBuffer) {
+    if (!audioBuffer) {
       toast({
         title: "Export failed",
-        description: "No processed audio available",
+        description: "No audio file imported",
         variant: "destructive",
       });
       return;
@@ -109,8 +133,17 @@ const Studio = () => {
     setIsExporting(true);
 
     try {
-      // Convert to MP3 blob at 320 kbps using the already processed buffer
-      const mp3Blob = audioBufferToMp3(processedAudioBuffer);
+      // Create processed buffer with current effects if not available
+      let bufferToExport = processedAudioBuffer;
+      if (!bufferToExport) {
+        bufferToExport = await audioProcessor.createProcessedBuffer();
+        if (!bufferToExport) {
+          throw new Error("Failed to create processed audio buffer");
+        }
+      }
+
+      // Convert to MP3 blob at 320 kbps using the processed buffer
+      const mp3Blob = audioBufferToMp3(bufferToExport);
       
       // Generate filename with (processed) suffix
       const fileNameWithoutExt = originalFileName.replace(/\.[^/.]+$/, ''); // Remove extension
@@ -143,7 +176,43 @@ const Studio = () => {
         variant: "destructive",
       });
     }
-  }, [processedAudioBuffer, originalFileName]);
+  }, [audioBuffer, processedAudioBuffer, originalFileName, audioProcessor]);
+
+  // Keyboard shortcuts
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      // Only handle shortcuts when not typing in input fields
+      if (event.target instanceof HTMLInputElement || event.target instanceof HTMLTextAreaElement) {
+        return;
+      }
+
+      switch (event.code) {
+        case 'Space':
+          event.preventDefault();
+          if (isPlaying) {
+            pause();
+          } else if (audioFile) {
+            play();
+          }
+          break;
+        case 'KeyS':
+          event.preventDefault();
+          if (audioFile) {
+            stop();
+          }
+          break;
+        case 'KeyE':
+          event.preventDefault();
+          if (audioFile && !isExporting) {
+            handleExport();
+          }
+          break;
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [isPlaying, audioFile, play, pause, stop, handleExport, isExporting]);
 
   // Effects change handler with immediate updates
   const handleEffectsChange = useCallback((newEffects: AudioEffects) => {
@@ -181,6 +250,7 @@ const Studio = () => {
               currentTime={currentTime}
               duration={duration}
               audioBuffer={audioBuffer}
+              isProcessing={isProcessing}
             />
 
             {/* Export Popup */}
@@ -206,25 +276,17 @@ const Studio = () => {
                   <div className="text-sm text-muted-foreground space-y-2">
                     <p><strong>File:</strong> {audioFile.name}</p>
                     <p><strong>Size:</strong> {(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                    <p><strong>Duration:</strong> {duration ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}` : '--:--'}</p>
-                    <p><strong>Current Time:</strong> {currentTime ? `${Math.floor(currentTime / 60)}:${(currentTime % 60).toFixed(0).padStart(2, '0')}` : '--:--'}</p>
                   </div>
                 </CardContent>
               </Card>
             )}
+
+
           </div>
         </div>
       </div>
       
-      {/* Invisible Advanced Studio Button at Bottom */}
-      <div className="fixed bottom-4 left-1/2 transform -translate-x-1/2 opacity-0 hover:opacity-100 transition-opacity duration-300">
-        <Link to="/advanced">
-          <Button variant="ghost" size="sm" className="rounded-sm text-muted-foreground hover:text-foreground">
-            <Zap className="h-4 w-4 mr-2" />
-            Advanced Studio
-          </Button>
-        </Link>
-      </div>
+
       
       {/* Footer at Very Bottom */}
       <div className="fixed bottom-0 left-0 right-0 text-center pb-2">

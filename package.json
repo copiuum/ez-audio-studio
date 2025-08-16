@@ -2,6 +2,7 @@
   "name": "ez-audio-studio",
   "private": true,
   "version": "1.0.0",
+  "type": "module",
   "description": "A professional audio studio application with real-time effects and advanced processing",
   "author": {
     "name": "copiuum",

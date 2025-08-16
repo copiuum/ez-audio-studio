@@ -1,4 +1,5 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
+import { optimizeCanvasForOpenGL } from '@/lib/opengl-optimizations';
 
 interface WaveformSeekProps {
   audioBuffer: AudioBuffer | null;
@@ -175,26 +176,59 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     const percentage = clampedX / width;
     const newTime = percentage * duration;
     
-    // Debug logging (can be removed in production)
-    console.log('Seek Debug:', {
-      clientX: e.clientX,
-      rectLeft: rect.left,
-      canvasX,
-      scaleX,
-      actualX,
-      clampedX,
-      percentage,
-      newTime,
-      duration
-    });
-    
     onSeek(newTime);
   }, [duration, width, onSeek]);
+
+  // Handle keyboard navigation
+  const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
+    if (!duration) return;
+
+    const step = duration / 100; // 1% of duration
+    let newTime = currentTime;
+
+    switch (e.key) {
+      case 'ArrowLeft':
+        e.preventDefault();
+        newTime = Math.max(0, currentTime - step);
+        break;
+      case 'ArrowRight':
+        e.preventDefault();
+        newTime = Math.min(duration, currentTime + step);
+        break;
+      case 'Home':
+        e.preventDefault();
+        newTime = 0;
+        break;
+      case 'End':
+        e.preventDefault();
+        newTime = duration;
+        break;
+      case 'PageUp':
+        e.preventDefault();
+        newTime = Math.max(0, currentTime - step * 10);
+        break;
+      case 'PageDown':
+        e.preventDefault();
+        newTime = Math.min(duration, currentTime + step * 10);
+        break;
+      default:
+        return;
+    }
+
+    onSeek(newTime);
+  }, [currentTime, duration, onSeek]);
 
   // Draw waveform when data changes
   useEffect(() => {
     drawWaveform();
   }, [drawWaveform]);
+
+  // Optimize canvas for OpenGL when component mounts
+  useEffect(() => {
+    if (canvasRef.current) {
+      optimizeCanvasForOpenGL(canvasRef.current);
+    }
+  }, []);
 
   // Add global pointer event listeners
   useEffect(() => {
@@ -247,7 +281,14 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onClick={handleClick}
+      onKeyDown={handleKeyDown}
       style={{ touchAction: 'none' }}
+      role="slider"
+      aria-label="Audio seek control"
+      aria-valuemin={0}
+      aria-valuemax={duration}
+      aria-valuenow={currentTime}
+      tabIndex={0}
     />
   );
 };
