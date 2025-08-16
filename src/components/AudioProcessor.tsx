@@ -121,23 +121,24 @@ export const useAudioProcessor = ({
     (effects as AdvancedAudioEffects).audioProcessingEnabled,
   ]);
 
-  // Advanced reverb using feedback delay networks and room modeling
-  const createReverbImpulse = useCallback((audioContext: BaseAudioContext, seconds: number = 2, decay: number = 2) => {
+  // Wet reverb effect - simulates underwater/liquid environment
+  const createWetReverbImpulse = useCallback((audioContext: BaseAudioContext, seconds: number = 2, wetness: number = 2) => {
     const length = audioContext.sampleRate * seconds;
     const impulse = audioContext.createBuffer(2, length, audioContext.sampleRate);
     
-    // Room dimensions for realistic reverb modeling
-    const roomWidth = 10 + decay * 5; // meters
-    const roomHeight = 3 + decay * 2;
-    const roomDepth = 8 + decay * 4;
+    // Underwater characteristics
+    const waterDepth = 5 + wetness * 10; // meters
+    const waterTemperature = 15 + wetness * 5; // Celsius
+    const waterDensity = 1.025 + wetness * 0.01; // kg/m³
     
-    // Calculate reflection times based on room dimensions
-    const earlyReflectionTimes = [
-      0.001, // Direct sound
-      0.008, // First reflection
-      0.012, // Second reflection
-      0.018, // Third reflection
-      0.025, // Fourth reflection
+    // Fluid-like reflection patterns (more chaotic than air)
+    const fluidReflectionTimes = [
+      0.002, // Direct sound (slower in water)
+      0.015, // First fluid reflection
+      0.028, // Second fluid reflection
+      0.042, // Third fluid reflection
+      0.058, // Fourth fluid reflection
+      0.075, // Fifth fluid reflection (more reflections in water)
     ];
     
     for (let channel = 0; channel < 2; channel++) {
@@ -148,62 +149,75 @@ export const useAudioProcessor = ({
         channelData[i] = 0;
       }
       
-      // Add early reflections with realistic timing
-      earlyReflectionTimes.forEach((time, index) => {
+      // Add fluid-like early reflections
+      fluidReflectionTimes.forEach((time, index) => {
         const sampleIndex = Math.floor(time * audioContext.sampleRate);
         if (sampleIndex < length) {
-          const amplitude = Math.pow(0.7, index) * (1 - decay * 0.3);
-          channelData[sampleIndex] += (Math.random() * 2 - 1) * amplitude;
+          // Water absorbs high frequencies more than low frequencies
+          const frequencyAbsorption = Math.pow(0.85, index); // High freq loss
+          const amplitude = Math.pow(0.8, index) * (1 - wetness * 0.2) * frequencyAbsorption;
+          
+          // Add fluid turbulence
+          const turbulence = Math.sin(sampleIndex * 0.3) * 0.2;
+          channelData[sampleIndex] += (Math.random() * 2 - 1) * amplitude * (1 + turbulence);
         }
       });
       
-      // Create feedback delay network for late reverb
-      const delayTimes = [
-        0.0297, 0.0371, 0.0411, 0.0437, // Prime numbers for diffusion
-        0.0313, 0.0391, 0.0449, 0.0473,
+      // Create fluid delay network (more complex than air)
+      const fluidDelayTimes = [
+        0.035, 0.047, 0.053, 0.061, // Fluid delays (longer than air)
+        0.041, 0.055, 0.063, 0.071, // More chaotic timing
+        0.037, 0.049, 0.057, 0.065, // Additional fluid paths
       ];
       
-      const feedbackGain = 0.6 - decay * 0.2;
+      const fluidFeedbackGain = 0.7 - wetness * 0.15; // Higher feedback in water
       
-      // Generate late reverb using multiple delay lines
+      // Generate fluid reverb using multiple delay lines
       for (let i = 0; i < length; i++) {
-        let lateReverb = 0;
+        let fluidReverb = 0;
         
-        delayTimes.forEach((delayTime, delayIndex) => {
+        fluidDelayTimes.forEach((delayTime, delayIndex) => {
           const delaySamples = Math.floor(delayTime * audioContext.sampleRate);
           const feedbackIndex = i - delaySamples;
           
           if (feedbackIndex >= 0 && feedbackIndex < length) {
-            const feedback = channelData[feedbackIndex] * feedbackGain;
-            const diffusion = Math.sin(i * 0.1 + delayIndex) * 0.3;
-            lateReverb += feedback * (0.8 + diffusion);
+            const feedback = channelData[feedbackIndex] * fluidFeedbackGain;
+            
+            // Add fluid movement and turbulence
+            const fluidMovement = Math.sin(i * 0.05 + delayIndex) * 0.4;
+            const turbulence = Math.sin(i * 0.15 + delayIndex * 0.7) * 0.2;
+            const fluidFlow = Math.sin(i * 0.03 + delayIndex * 0.3) * 0.3;
+            
+            fluidReverb += feedback * (0.9 + fluidMovement + turbulence + fluidFlow);
           }
         });
         
-        // Apply frequency-dependent decay
-        const frequency = i / length * 20000; // Approximate frequency
-        const highFreqDecay = Math.pow(0.95, frequency / 1000); // High frequencies decay faster
-        const timeDecay = Math.pow(0.99, i / (audioContext.sampleRate * 0.1));
+        // Apply underwater frequency characteristics
+        const frequency = i / length * 20000;
+        const underwaterFreqDecay = Math.pow(0.9, frequency / 500); // Much more high freq loss
+        const fluidTimeDecay = Math.pow(0.985, i / (audioContext.sampleRate * 0.08)); // Slower decay
         
-        channelData[i] += lateReverb * highFreqDecay * timeDecay;
+        channelData[i] += fluidReverb * underwaterFreqDecay * fluidTimeDecay;
         
-        // Add some room resonance
-        const roomResonance = Math.sin(i * 0.02) * 0.1 * Math.pow(0.98, i / audioContext.sampleRate);
-        channelData[i] += roomResonance;
+        // Add underwater resonance and pressure effects
+        const pressureEffect = Math.sin(i * 0.01) * 0.15 * Math.pow(0.99, i / audioContext.sampleRate);
+        const waterResonance = Math.sin(i * 0.025) * 0.1 * Math.pow(0.995, i / audioContext.sampleRate);
+        channelData[i] += pressureEffect + waterResonance;
       }
       
-      // Apply final shaping
+      // Apply underwater final shaping
       for (let i = 0; i < length; i++) {
         const time = i / length;
         
-        // Exponential decay
-        const decayCurve = Math.pow(1 - time, decay);
+        // Underwater decay (slower, more muffled)
+        const underwaterDecay = Math.pow(1 - time * 0.7, wetness * 0.8); // Slower decay
         
-        // Add some randomness for natural sound
-        const noise = (Math.random() * 2 - 1) * 0.1;
+        // Add underwater noise and bubbles
+        const bubbleNoise = (Math.random() * 2 - 1) * 0.08;
+        const waterNoise = Math.sin(i * 0.1) * 0.05 * Math.pow(0.99, i / audioContext.sampleRate);
         
-        // Apply final amplitude
-        channelData[i] = channelData[i] * decayCurve + noise;
+        // Apply final amplitude with underwater characteristics
+        channelData[i] = channelData[i] * underwaterDecay + bubbleNoise + waterNoise;
         
         // Clamp to prevent clipping
         channelData[i] = Math.max(-1, Math.min(1, channelData[i]));
@@ -297,41 +311,41 @@ export const useAudioProcessor = ({
     return attenuator;
   }, []);
 
-  // Create advanced reverb processor with multiple delay lines
-  const createAdvancedReverb = useCallback((audioContext: BaseAudioContext, reverbAmount: number) => {
+  // Create wet reverb processor for underwater effect
+  const createWetReverbProcessor = useCallback((audioContext: BaseAudioContext, reverbAmount: number) => {
     const currentTime = audioContext.currentTime;
     
-    // Pre-filter to remove low-end mud
+    // Pre-filter to simulate underwater frequency absorption
     if (!reverbPreFilterRef.current) {
       reverbPreFilterRef.current = audioContext.createBiquadFilter();
       reverbPreFilterRef.current.type = 'highpass';
-      reverbPreFilterRef.current.frequency.setValueAtTime(120, currentTime);
-      reverbPreFilterRef.current.Q.setValueAtTime(0.8, currentTime);
+      reverbPreFilterRef.current.frequency.setValueAtTime(200, currentTime); // Higher cutoff for underwater
+      reverbPreFilterRef.current.Q.setValueAtTime(1.2, currentTime);
     }
     
-    // Post-filter for room character
+    // Post-filter for underwater character (muffled highs, enhanced lows)
     if (!reverbPostFilterRef.current) {
       reverbPostFilterRef.current = audioContext.createBiquadFilter();
-      reverbPostFilterRef.current.type = 'peaking';
-      reverbPostFilterRef.current.frequency.setValueAtTime(6000, currentTime);
-      reverbPostFilterRef.current.Q.setValueAtTime(1.0, currentTime);
-      reverbPostFilterRef.current.gain.setValueAtTime(reverbAmount * 4, currentTime);
+      reverbPostFilterRef.current.type = 'lowshelf'; // Enhance low frequencies
+      reverbPostFilterRef.current.frequency.setValueAtTime(800, currentTime);
+      reverbPostFilterRef.current.Q.setValueAtTime(0.8, currentTime);
+      reverbPostFilterRef.current.gain.setValueAtTime(reverbAmount * 8, currentTime); // Strong low boost
     }
     
-    // Subtle modulation for natural movement
+    // Fluid movement simulation
     if (!reverbModulationRef.current) {
       reverbModulationRef.current = audioContext.createOscillator();
       reverbModulationRef.current.type = 'sine';
-      reverbModulationRef.current.frequency.setValueAtTime(0.05, currentTime); // Very slow
+      reverbModulationRef.current.frequency.setValueAtTime(0.08, currentTime); // Fluid movement
       reverbModulationRef.current.start();
     }
     
     if (!reverbModulationGainRef.current) {
       reverbModulationGainRef.current = audioContext.createGain();
-      reverbModulationGainRef.current.gain.setValueAtTime(reverbAmount * 0.2, currentTime);
+      reverbModulationGainRef.current.gain.setValueAtTime(reverbAmount * 0.4, currentTime); // More movement
     }
     
-    // Connect modulation to add subtle movement
+    // Connect modulation for fluid movement
     reverbModulationRef.current.connect(reverbModulationGainRef.current);
     reverbModulationGainRef.current.connect(reverbPostFilterRef.current.frequency);
     
@@ -419,14 +433,14 @@ export const useAudioProcessor = ({
       updateEQFilters(audioContext, effects as AdvancedAudioEffects);
     }
 
-    // Create heavenly reverb impulse with enhanced characteristics
-    const reverbDuration = 3 + effects.reverb * 2; // Longer reverb for heavenly effect
-    const reverbDecay = 1.5 + effects.reverb * 1.5; // Enhanced decay
-    const reverbImpulse = createReverbImpulse(audioContext, reverbDuration, reverbDecay);
+    // Create wet reverb impulse with underwater characteristics
+    const reverbDuration = 3 + effects.reverb * 3; // Longer underwater reverb
+    const reverbWetness = 1.5 + effects.reverb * 2; // Wetness intensity
+    const reverbImpulse = createWetReverbImpulse(audioContext, reverbDuration, reverbWetness);
     convolutionNodeRef.current.buffer = reverbImpulse;
     
-    // Create advanced reverb processor
-    const advancedReverb = createAdvancedReverb(audioContext, effects.reverb);
+    // Create wet reverb processor
+    const wetReverb = createWetReverbProcessor(audioContext, effects.reverb);
 
     // Update current effects with improved volume scaling to prevent distortion
     // Convert 0-1 slider to -60dB to +6dB range for professional volume control
@@ -477,9 +491,9 @@ export const useAudioProcessor = ({
       convolutionNode: convolutionNodeRef.current,
       analyserNode: analyserNodeRef.current,
       eqFilters,
-      advancedReverb
+      wetReverb
     };
-  }, [effects.reverb, effects.volume, effects.bassBoost, createReverbImpulse, createAdvancedReverb, createEQFilters, updateEQFilters, onVisualizationData]);
+  }, [effects.reverb, effects.volume, effects.bassBoost, createWetReverbImpulse, createWetReverbProcessor, createEQFilters, updateEQFilters, onVisualizationData]);
 
   const updateEffects = useCallback(() => {
     if (!audioContextRef.current || !gainNodeRef.current || !bassBoostFilterRef.current) return;
@@ -765,31 +779,31 @@ export const useAudioProcessor = ({
       eqFilters.high.gain.setValueAtTime(sliderToDb(advancedEffects.eqHigh || 0.5), offlineContext.currentTime);
     }
 
-    // Create advanced reverb impulse for export
-    const reverbDuration = 2.5 + effects.reverb * 2.5; // Adaptive reverb duration
-    const reverbDecay = 1.2 + effects.reverb * 1.8; // Natural decay curve
-    const reverbImpulse = createReverbImpulse(offlineContext, reverbDuration, reverbDecay);
+    // Create wet reverb impulse for export
+    const reverbDuration = 3 + effects.reverb * 3; // Longer underwater reverb
+    const reverbWetness = 1.5 + effects.reverb * 2; // Wetness intensity
+    const reverbImpulse = createWetReverbImpulse(offlineContext, reverbDuration, reverbWetness);
     convolutionNode.buffer = reverbImpulse;
     
-    // Create advanced reverb processing nodes for export
+    // Create wet reverb processing nodes for export
     const reverbPreFilter = offlineContext.createBiquadFilter();
     const reverbPostFilter = offlineContext.createBiquadFilter();
     const reverbPreGain = offlineContext.createGain();
     const reverbPostGain = offlineContext.createGain();
     
-    // Configure advanced reverb filters
+    // Configure wet reverb filters (underwater characteristics)
     reverbPreFilter.type = 'highpass';
-    reverbPreFilter.frequency.setValueAtTime(120, offlineContext.currentTime);
-    reverbPreFilter.Q.setValueAtTime(0.8, offlineContext.currentTime);
+    reverbPreFilter.frequency.setValueAtTime(200, offlineContext.currentTime); // Higher cutoff for underwater
+    reverbPreFilter.Q.setValueAtTime(1.2, offlineContext.currentTime);
     
-    reverbPostFilter.type = 'peaking';
-    reverbPostFilter.frequency.setValueAtTime(6000, offlineContext.currentTime);
-    reverbPostFilter.Q.setValueAtTime(1.0, offlineContext.currentTime);
-    reverbPostFilter.gain.setValueAtTime(effects.reverb * 4, offlineContext.currentTime);
+    reverbPostFilter.type = 'lowshelf'; // Enhance low frequencies for underwater effect
+    reverbPostFilter.frequency.setValueAtTime(800, offlineContext.currentTime);
+    reverbPostFilter.Q.setValueAtTime(0.8, offlineContext.currentTime);
+    reverbPostFilter.gain.setValueAtTime(effects.reverb * 8, offlineContext.currentTime); // Strong low boost
     
     // Configure gains
-    reverbPreGain.gain.setValueAtTime(effects.reverb * 0.9, offlineContext.currentTime);
-    reverbPostGain.gain.setValueAtTime(effects.reverb * 1.1, offlineContext.currentTime);
+    reverbPreGain.gain.setValueAtTime(effects.reverb * 0.8, offlineContext.currentTime);
+    reverbPostGain.gain.setValueAtTime(effects.reverb * 1.3, offlineContext.currentTime);
 
     // Connect the graph with EQ filters
     source.connect(gainNode);
@@ -843,7 +857,7 @@ export const useAudioProcessor = ({
     lastNode.connect(dryGain);
     dryGain.connect(offlineContext.destination);
     
-    // Connect wet signal through advanced reverb processing
+    // Connect wet signal through underwater reverb processing
     lastNode.connect(reverbPreGain);
     reverbPreGain.connect(reverbPreFilter);
     reverbPreFilter.connect(convolutionNode);
@@ -857,7 +871,7 @@ export const useAudioProcessor = ({
     
     // Render and return processed buffer
     return await offlineContext.startRendering();
-  }, [effects, createReverbImpulse]);
+  }, [effects, createWetReverbImpulse]);
 
   const processAudioFile = useCallback(async (file: File): Promise<AudioBuffer> => {
     if (!audioContextRef.current) {
