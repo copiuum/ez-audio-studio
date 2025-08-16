@@ -4,6 +4,7 @@ import { Slider } from '@/components/ui/slider';
 import { Card } from '@/components/ui/card';
 import { Play, Pause, Square, Upload, Download, Volume2, Music, Zap } from 'lucide-react';
 import { AudioEffects, AdvancedAudioEffects } from './AudioProcessor';
+import { WaveformSeek } from './WaveformSeek';
 
 interface StudioControlsProps {
   effects: AudioEffects | AdvancedAudioEffects;
@@ -18,6 +19,7 @@ interface StudioControlsProps {
   hasAudio: boolean;
   currentTime: number;
   duration: number;
+  audioBuffer?: AudioBuffer | null;
 }
 
 export const StudioControls: React.FC<StudioControlsProps> = ({
@@ -33,10 +35,9 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
   hasAudio,
   currentTime,
   duration,
+  audioBuffer,
 }) => {
   const fileInputRef = React.useRef<HTMLInputElement>(null);
-  const [sliderValue, setSliderValue] = React.useState(currentTime);
-  const isDraggingRef = React.useRef(false);
 
   const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -56,12 +57,7 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
     });
   };
 
-  // Update slider value when currentTime changes (but not during dragging)
-  React.useEffect(() => {
-    if (!isDraggingRef.current) {
-      setSliderValue(currentTime);
-    }
-  }, [currentTime]);
+
 
   return (
     <div className="space-y-6">
@@ -133,28 +129,22 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
         </div>
       </div>
       
-      {/* Seek Control */}
+      {/* Waveform Seek Control */}
       {hasAudio && (
         <div className="space-y-3">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-foreground">Position</span>
+            <span className="text-sm font-medium text-foreground">Waveform</span>
             <span className="text-sm text-muted-foreground">
               {Math.floor(currentTime / 60)}:{(currentTime % 60).toFixed(0).padStart(2, '0')} / {Math.floor(duration / 60)}:{(duration % 60).toFixed(0).padStart(2, '0')}
             </span>
           </div>
-          <Slider
-            value={[sliderValue]}
-            onValueChange={([value]) => {
-              setSliderValue(value);
-              isDraggingRef.current = true;
-            }}
-            onValueCommit={([value]) => {
-              isDraggingRef.current = false;
-              onSeek(value);
-              }}
-            max={duration}
-            min={0}
-            step={0.01}
+          <WaveformSeek
+            audioBuffer={audioBuffer}
+            currentTime={currentTime}
+            duration={duration}
+            onSeek={onSeek}
+            width={300}
+            height={80}
             className="w-full"
           />
         </div>

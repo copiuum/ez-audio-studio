@@ -1,6 +1,5 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StudioControls } from '@/components/StudioControls';
-import { AudioVisualizer } from '@/components/AudioVisualizer';
 import { useAudioProcessor, AudioEffects, AdvancedAudioEffects } from '@/components/AudioProcessor';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
@@ -25,6 +24,7 @@ const Studio = () => {
   });
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [processedAudioBuffer, setProcessedAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
 
   // Performance optimization: Debounced effect updates
   const effectUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -65,9 +65,20 @@ const Studio = () => {
     };
   }, []);
 
-  const handleFileImport = useCallback((file: File) => {
+  const handleFileImport = useCallback(async (file: File) => {
     setAudioFile(file);
     setOriginalFileName(file.name);
+    
+    // Decode audio file to get AudioBuffer for waveform
+    try {
+      const arrayBuffer = await file.arrayBuffer();
+      const audioContext = new AudioContext();
+      const decodedBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      setAudioBuffer(decodedBuffer);
+    } catch (error) {
+      console.error('Error decoding audio file:', error);
+    }
+    
     toast({
       title: "Audio imported",
       description: `Successfully loaded ${file.name}`,
@@ -139,9 +150,8 @@ const Studio = () => {
           </Link>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          {/* Controls Panel */}
-          <div className="lg:col-span-1 space-y-6">
+        <div className="flex justify-center">
+          <div className="max-w-md w-full space-y-6">
             <StudioControls
               effects={effects}
               onEffectsChange={handleEffectsChange}
@@ -155,44 +165,25 @@ const Studio = () => {
               hasAudio={!!audioFile}
               currentTime={currentTime}
               duration={duration}
+              audioBuffer={audioBuffer}
             />
-          </div>
 
-          {/* Visualization Panel */}
-          <div className="lg:col-span-2">
-            <div className="space-y-4">
-              <div>
-                <h3 className="text-lg font-semibold mb-2">Enhanced Audio Visualization</h3>
-                <p className="text-sm text-muted-foreground mb-4">Real-time frequency and waveform analysis with optimized performance</p>
-                {audioFile ? (
-                  <AudioVisualizer
-                    analyserNode={analyserNode}
-                    width={800}
-                    height={400}
-                    className="w-full"
-                  />
-                ) : (
-                  <div className="h-64 flex items-center justify-center bg-gradient-panel rounded-sm border border-border">
-                    <div className="text-center text-muted-foreground">
-                      <Zap className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                      <p>Import an audio file to see enhanced visualization</p>
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Audio File Info */}
-              {audioFile && (
-                <div className="pt-4">
-                  <div className="text-sm text-muted-foreground">
+            {/* Audio File Info */}
+            {audioFile && (
+              <Card className="rounded-sm">
+                <CardHeader>
+                  <CardTitle className="text-lg">Audio File Info</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-sm text-muted-foreground space-y-2">
                     <p><strong>File:</strong> {audioFile.name}</p>
                     <p><strong>Size:</strong> {(audioFile.size / 1024 / 1024).toFixed(2)} MB</p>
                     <p><strong>Duration:</strong> {duration ? `${Math.floor(duration / 60)}:${(duration % 60).toFixed(0).padStart(2, '0')}` : '--:--'}</p>
                     <p><strong>Current Time:</strong> {currentTime ? `${Math.floor(currentTime / 60)}:${(currentTime % 60).toFixed(0).padStart(2, '0')}` : '--:--'}</p>
                   </div>
-                </div>
-              )}
-            </div>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
       </div>
