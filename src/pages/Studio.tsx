@@ -27,6 +27,7 @@ const Studio = () => {
   const [analyserNode, setAnalyserNode] = useState<AnalyserNode | null>(null);
   const [processedAudioBuffer, setProcessedAudioBuffer] = useState<AudioBuffer | null>(null);
   const [audioBuffer, setAudioBuffer] = useState<AudioBuffer | null>(null);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   // Performance optimization: Debounced effect updates
   const effectUpdateTimeoutRef = useRef<NodeJS.Timeout | null>(null);
@@ -104,6 +105,9 @@ const Studio = () => {
       return;
     }
 
+    // Show export popup
+    setIsExporting(true);
+
     try {
       // Convert to MP3 blob at 320 kbps using the already processed buffer
       const mp3Blob = audioBufferToMp3(processedAudioBuffer);
@@ -120,12 +124,19 @@ const Studio = () => {
       a.click();
       URL.revokeObjectURL(url);
 
+      // Hide export popup
+      setIsExporting(false);
+
       toast({
         title: "Export successful",
         description: "Audio exported as MP3 (320 kbps)",
       });
     } catch (error) {
       console.error('Export error:', error);
+      
+      // Hide export popup
+      setIsExporting(false);
+      
       toast({
         title: "Export failed",
         description: "Failed to export audio file",
@@ -171,6 +182,19 @@ const Studio = () => {
               duration={duration}
               audioBuffer={audioBuffer}
             />
+
+            {/* Export Popup */}
+            {isExporting && (
+              <Card className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+                <CardContent className="p-8 text-center max-w-md mx-4">
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <h3 className="text-xl font-semibold mb-2">Exporting audio...</h3>
+                  <p className="text-muted-foreground text-sm">
+                    Browser seems to be frozen? Try hard refresh (CTRL + F5)
+                  </p>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Audio File Info */}
             {audioFile && (
