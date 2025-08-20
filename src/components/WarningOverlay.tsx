@@ -49,7 +49,7 @@ export const WarningOverlay: React.FC<WarningOverlayProps> = ({ onDismiss }) => 
           variant="ghost"
           size="sm"
           onClick={handleDismiss}
-          className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-muted/50"
+          className="absolute top-2 right-2 h-8 w-8 p-0 hover:bg-muted/50 button-glass"
           aria-label="Close warning dialog"
           title="Close (ESC)"
         >

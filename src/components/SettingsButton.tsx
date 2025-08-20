@@ -25,7 +25,7 @@ export const SettingsButton: React.FC<SettingsButtonProps> = ({ onShowWarning })
         <Button
           variant="ghost"
           size="sm"
-          className="fixed top-4 right-4 h-10 w-10 p-0 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90"
+          className="fixed top-4 right-4 h-10 w-10 p-0 rounded-full bg-background/80 backdrop-blur-sm border border-border/50 hover:bg-background/90 button-glass"
           aria-label="Open settings"
         >
           <Settings className="h-4 w-4" />
