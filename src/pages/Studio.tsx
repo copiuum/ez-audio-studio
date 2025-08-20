@@ -105,11 +105,33 @@ const Studio = () => {
       });
     } catch (error) {
       console.error('Error processing audio file:', error);
+      
+      // Provide specific error messages based on error type
+      let errorMessage = "Failed to load audio file. Please try again.";
+      let errorTitle = "Import failed";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('format') || error.message.includes('type')) {
+          errorTitle = "Unsupported file format";
+          errorMessage = "This audio format is not supported. Please try MP3, WAV, OGG, M4A, AAC, or FLAC files.";
+        } else if (error.message.includes('corrupt') || error.message.includes('invalid')) {
+          errorTitle = "Corrupted file";
+          errorMessage = "The audio file appears to be corrupted. Please try a different file.";
+        } else if (error.message.includes('size') || error.message.includes('memory')) {
+          errorTitle = "File too large";
+          errorMessage = "The file is too large to process. Please try a smaller file (under 50MB).";
+        } else if (error.message.includes('permission') || error.message.includes('access')) {
+          errorTitle = "Access denied";
+          errorMessage = "Unable to access the file. Please check file permissions and try again.";
+        }
+      }
+      
       toast({
-        title: "Import failed",
-        description: "Failed to load audio file. Please try again.",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
+      
       // Reset state on error
       setAudioFile(null);
       setOriginalFileName('');
@@ -170,9 +192,29 @@ const Studio = () => {
       // Hide export popup
       setIsExporting(false);
       
+      // Provide specific export error messages
+      let errorMessage = "Failed to export audio file. Please try again.";
+      let errorTitle = "Export failed";
+      
+      if (error instanceof Error) {
+        if (error.message.includes('memory') || error.message.includes('size')) {
+          errorTitle = "Memory error";
+          errorMessage = "Not enough memory to export. Try closing other applications or use a smaller audio file.";
+        } else if (error.message.includes('format') || error.message.includes('encoder')) {
+          errorTitle = "Encoding error";
+          errorMessage = "Failed to encode audio. The file may be corrupted or in an unsupported format.";
+        } else if (error.message.includes('permission') || error.message.includes('access')) {
+          errorTitle = "Permission error";
+          errorMessage = "Unable to save file. Please check your browser's download permissions.";
+        } else if (error.message.includes('timeout')) {
+          errorTitle = "Export timeout";
+          errorMessage = "Export took too long. Try with a shorter audio file or restart the application.";
+        }
+      }
+      
       toast({
-        title: "Export failed",
-        description: "Failed to export audio file",
+        title: errorTitle,
+        description: errorMessage,
         variant: "destructive",
       });
     }
@@ -257,10 +299,13 @@ const Studio = () => {
             {isExporting && (
               <Card className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
                 <CardContent className="p-8 text-center max-w-md mx-4">
-                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+                  <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4" role="status" aria-label="Exporting audio file"></div>
                   <h3 className="text-xl font-semibold mb-2">Exporting audio...</h3>
+                  <div className="w-full bg-muted rounded-full h-2 mb-4">
+                    <div className="bg-primary h-2 rounded-full animate-pulse" style={{ width: '60%' }}></div>
+                  </div>
                   <p className="text-muted-foreground text-sm">
-                    Browser seems to be frozen? Try hard refresh (CTRL + F5)
+                    Converting to MP3 format (320 kbps). This may take a moment for large files.
                   </p>
                 </CardContent>
               </Card>
@@ -290,14 +335,9 @@ const Studio = () => {
       
       {/* Footer at Very Bottom */}
       <div className="fixed bottom-0 left-0 right-0 text-center pb-2">
-        <a 
-          href="https://guns.lol/copiuum" 
-          target="_blank" 
-          rel="noopener noreferrer"
-          className="footer-glow inline-block px-6 py-3 text-muted-foreground hover:text-foreground transition-colors rounded-sm"
-        >
-          project by copiuum - contact me
-        </a>
+        <div className="footer-glow inline-block px-6 py-3 text-muted-foreground transition-colors rounded-sm">
+          project by copiuum - local audio processing only
+        </div>
       </div>
     </div>
   );

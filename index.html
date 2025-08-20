@@ -24,9 +24,13 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="EZ Audio Studio" />
     
-    <!-- Preload Critical Resources -->
-    <link rel="preconnect" href="https://fonts.googleapis.com" />
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <!-- Local Fonts - Using system fonts for offline functionality -->
+    <style>
+      /* Use system fonts to avoid external connections */
+      body {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Roboto', 'Oxygen', 'Ubuntu', 'Cantarell', 'Fira Sans', 'Droid Sans', 'Helvetica Neue', sans-serif;
+      }
+    </style>
     
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="/favicon.ico" />
@@ -40,7 +44,7 @@
     <meta property="og:description" content="Professional audio studio application with real-time effects and advanced processing capabilities" />
     <meta property="og:type" content="website" />
     <meta property="og:image" content="/public/placeholder.svg" />
-    <meta property="og:url" content="https://ezaudiostudio.app" />
+    <meta property="og:url" content="/" />
 
     <!-- Twitter -->
     <meta name="twitter:card" content="summary_large_image" />

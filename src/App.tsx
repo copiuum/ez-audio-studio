@@ -5,23 +5,38 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
+import { WarningOverlay } from "@/components/WarningOverlay";
+import { SettingsButton } from "@/components/SettingsButton";
+import { useState } from "react";
 
 const queryClient = new QueryClient();
 
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <TooltipProvider>
-      <Toaster />
-      <Sonner />
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<Studio />} />
-          {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
-          <Route path="*" element={<NotFound />} />
-        </Routes>
-      </BrowserRouter>
-    </TooltipProvider>
-  </QueryClientProvider>
-);
+const App = () => {
+  const [showWarning, setShowWarning] = useState(true);
+
+  const handleShowWarning = () => {
+    setShowWarning(true);
+  };
+
+  return (
+    <QueryClientProvider client={queryClient}>
+      <TooltipProvider>
+        <Toaster />
+        <Sonner />
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<Studio />} />
+            {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
+            <Route path="*" element={<NotFound />} />
+          </Routes>
+        </BrowserRouter>
+        {showWarning && (
+          <WarningOverlay onDismiss={() => setShowWarning(false)} />
+        )}
+        <SettingsButton onShowWarning={handleShowWarning} />
+      </TooltipProvider>
+    </QueryClientProvider>
+  );
+};
 
 export default App;
