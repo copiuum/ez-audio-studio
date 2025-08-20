@@ -12,6 +12,7 @@
     "dev": "vite",
     "build": "vite build",
     "build:dev": "vite build --mode development",
+    "analyze": "bunx vite-bundle-analyzer dist",
     "lint": "eslint .",
     "preview": "vite preview",
     "electron": "electron electron/main.js",
@@ -94,6 +95,7 @@
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
     "vite": "^5.4.19",
+    "vite-bundle-analyzer": "^1.2.1",
     "wait-on": "^8.0.4"
   },
   "main": "electron/main.js",

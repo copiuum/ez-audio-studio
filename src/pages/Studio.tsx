@@ -8,7 +8,6 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { toast } from '@/hooks/use-toast';
 import { Settings, Mic } from 'lucide-react';
-import lamejs from '@breezystack/lamejs';
 
 const Studio = () => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
@@ -165,7 +164,7 @@ const Studio = () => {
       }
 
       // Convert to MP3 blob at 320 kbps using the processed buffer
-      const mp3Blob = audioBufferToMp3(bufferToExport);
+      const mp3Blob = await audioBufferToMp3(bufferToExport);
       
       // Generate filename with (processed) suffix
       const fileNameWithoutExt = originalFileName.replace(/\.[^/.]+$/, ''); // Remove extension
@@ -256,9 +255,18 @@ const Studio = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isPlaying, audioFile, play, pause, stop, handleExport, isExporting]);
 
-  // Effects change handler with immediate updates
+  // Effects change handler with optimized updates
   const handleEffectsChange = useCallback((newEffects: AudioEffects) => {
-    setEffects(newEffects);
+    // Only update if effects actually changed
+    setEffects(prevEffects => {
+      if (prevEffects.reverb !== newEffects.reverb ||
+          prevEffects.bassBoost !== newEffects.bassBoost ||
+          prevEffects.tempo !== newEffects.tempo ||
+          prevEffects.volume !== newEffects.volume) {
+        return newEffects;
+      }
+      return prevEffects;
+    });
   }, []);
 
   // Reset effects to defaults
@@ -344,7 +352,10 @@ const Studio = () => {
 };
 
 // Utility function to convert AudioBuffer to MP3 blob at 320 kbps
-function audioBufferToMp3(buffer: AudioBuffer): Blob {
+async function audioBufferToMp3(buffer: AudioBuffer): Promise<Blob> {
+  // Lazy load lamejs only when exporting
+  const { default: lamejs } = await import('@breezystack/lamejs');
+  
   const samples = new Int16Array(buffer.length * buffer.numberOfChannels);
   let sampleIndex = 0;
 

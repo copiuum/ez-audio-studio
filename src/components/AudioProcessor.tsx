@@ -62,8 +62,24 @@ export const useAudioProcessor = (options: AudioProcessorOptions) => {
   const [currentTime, setCurrentTime] = React.useState(0);
   const [duration, setDuration] = React.useState(0);
 
-  // Memoized effects
-  const memoizedEffects = useMemo(() => effects, [JSON.stringify(effects)]);
+  // Memoized effects - optimized to avoid expensive JSON.stringify
+  const memoizedEffects = useMemo(() => effects, [
+    effects.reverb,
+    effects.bassBoost,
+    effects.tempo,
+    effects.volume,
+    effects.eqLow,
+    effects.eqLowMid,
+    effects.eqMid,
+    effects.eqHighMid,
+    effects.eqHigh,
+    effects.limiter,
+    effects.limiterThreshold,
+    effects.limiterRelease,
+    effects.attenuator,
+    effects.attenuatorGain,
+    effects.audioProcessingEnabled
+  ]);
 
   // Create audio context with user interaction requirement
   const createAudioContext = useCallback(async () => {
@@ -212,13 +228,29 @@ export const useAudioProcessor = (options: AudioProcessorOptions) => {
     reverbPostFilterRef.current.gain.setValueAtTime(reverbAmount * 4, currentTime);
   }, [effects]);
 
-  // Debounced effect updates
+  // Debounced effect updates - optimized comparison
   useEffect(() => {
     if (effectUpdateTimeoutRef.current) {
       clearTimeout(effectUpdateTimeoutRef.current);
     }
 
-    const effectsChanged = JSON.stringify(memoizedEffects) !== JSON.stringify(lastEffectsRef.current);
+    // Optimized comparison without JSON.stringify
+    const effectsChanged = 
+      memoizedEffects.reverb !== lastEffectsRef.current.reverb ||
+      memoizedEffects.bassBoost !== lastEffectsRef.current.bassBoost ||
+      memoizedEffects.tempo !== lastEffectsRef.current.tempo ||
+      memoizedEffects.volume !== lastEffectsRef.current.volume ||
+      memoizedEffects.eqLow !== lastEffectsRef.current.eqLow ||
+      memoizedEffects.eqLowMid !== lastEffectsRef.current.eqLowMid ||
+      memoizedEffects.eqMid !== lastEffectsRef.current.eqMid ||
+      memoizedEffects.eqHighMid !== lastEffectsRef.current.eqHighMid ||
+      memoizedEffects.eqHigh !== lastEffectsRef.current.eqHigh ||
+      memoizedEffects.limiter !== lastEffectsRef.current.limiter ||
+      memoizedEffects.limiterThreshold !== lastEffectsRef.current.limiterThreshold ||
+      memoizedEffects.limiterRelease !== lastEffectsRef.current.limiterRelease ||
+      memoizedEffects.attenuator !== lastEffectsRef.current.attenuator ||
+      memoizedEffects.attenuatorGain !== lastEffectsRef.current.attenuatorGain ||
+      memoizedEffects.audioProcessingEnabled !== lastEffectsRef.current.audioProcessingEnabled;
     
     if (effectsChanged && audioContextRef.current) {
       effectUpdateTimeoutRef.current = setTimeout(() => {

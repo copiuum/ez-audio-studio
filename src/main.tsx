@@ -8,6 +8,11 @@ import { runOptimizationTests } from './lib/test-optimizations'
 import { runComprehensiveFeatureTest } from './lib/feature-test'
 import { verifyAllFeatures } from './lib/verification'
 import { setupNetworkSecurity } from './lib/network-security'
+import { PerformanceMonitor } from './lib/performance'
+
+// Initialize performance monitoring
+const performanceMonitor = new PerformanceMonitor();
+performanceMonitor.mark('app-start');
 
 // Initialize network security (block external connections)
 setupNetworkSecurity();
@@ -30,4 +35,9 @@ if (process.env.NODE_ENV === 'development') {
   }, 2000);
 }
 
-createRoot(document.getElementById("root")!).render(<App />);
+const root = createRoot(document.getElementById("root")!);
+root.render(<App />);
+
+// Mark app render complete
+performanceMonitor.mark('app-render-complete');
+performanceMonitor.measure('app-initialization', 'app-start', 'app-render-complete');

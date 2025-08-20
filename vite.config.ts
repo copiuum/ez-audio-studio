@@ -41,7 +41,7 @@ export default defineConfig(({ mode }) => ({
           // Separate vendor chunks for better caching
           'react-vendor': ['react', 'react-dom'],
           'ui-vendor': ['@radix-ui/react-slider'],
-          'audio-vendor': ['@breezystack/lamejs'],
+          'audio-core': ['@breezystack/lamejs'], // Will be lazy loaded
           'utils-vendor': ['clsx', 'tailwind-merge', 'class-variance-authority'],
         },
         // Optimize asset names
