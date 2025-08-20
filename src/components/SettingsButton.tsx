@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Settings, Info, Shield, Wifi, WifiOff } from 'lucide-react';
+import { Settings, Info } from 'lucide-react';
 import {
   Dialog,
   DialogContent,
@@ -9,7 +9,7 @@ import {
   DialogTitle,
   DialogTrigger,
 } from '@/components/ui/dialog';
-import { getNetworkSecurityStatus } from '@/lib/network-security';
+
 
 interface SettingsButtonProps {
   onShowWarning: () => void;
@@ -17,7 +17,6 @@ interface SettingsButtonProps {
 
 export const SettingsButton: React.FC<SettingsButtonProps> = ({ onShowWarning }) => {
   const [isOpen, setIsOpen] = useState(false);
-  const networkStatus = getNetworkSecurityStatus();
 
   return (
     <Dialog open={isOpen} onOpenChange={setIsOpen}>
@@ -39,25 +38,7 @@ export const SettingsButton: React.FC<SettingsButtonProps> = ({ onShowWarning })
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4">
-          {/* Network Security Status */}
-          <div className="flex items-center justify-between p-4 border rounded-lg">
-            <div className="flex items-center gap-3">
-              <Shield className="h-5 w-5 text-green-500" />
-              <div>
-                <h4 className="font-medium">Network Security</h4>
-                <p className="text-sm text-muted-foreground">
-                  {networkStatus.isOfflineMode ? 'Offline mode active' : 'External connections blocked'}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2">
-              {networkStatus.isOfflineMode ? (
-                <WifiOff className="h-4 w-4 text-green-500" />
-              ) : (
-                <Wifi className="h-4 w-4 text-amber-500" />
-              )}
-            </div>
-          </div>
+
 
           <div className="flex items-center justify-between p-4 border rounded-lg">
             <div className="flex items-center gap-3">
@@ -85,7 +66,7 @@ export const SettingsButton: React.FC<SettingsButtonProps> = ({ onShowWarning })
             <p><strong>Supported formats:</strong> MP3, WAV, OGG, M4A, AAC, FLAC</p>
             <p><strong>File size limit:</strong> 50MB maximum</p>
             <p><strong>Export quality:</strong> MP3 at 320 kbps</p>
-            <p><strong>Security:</strong> External connections blocked</p>
+
           </div>
         </div>
       </DialogContent>

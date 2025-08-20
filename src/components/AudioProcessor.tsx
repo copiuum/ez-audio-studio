@@ -455,7 +455,7 @@ export const useAudioProcessor = (options: AudioProcessorOptions) => {
           stop();
         }
       }
-    }, 500); // Update every 500ms
+    }, 100); // Update every 100ms for smoother position updates
 
     return () => clearInterval(interval);
   }, [duration, stop, effects.tempo]);

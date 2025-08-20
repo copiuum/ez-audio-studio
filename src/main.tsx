@@ -7,15 +7,14 @@ import { initializeLinuxOptimizations } from './lib/linux-optimizations'
 import { runOptimizationTests } from './lib/test-optimizations'
 import { runComprehensiveFeatureTest } from './lib/feature-test'
 import { verifyAllFeatures } from './lib/verification'
-import { setupNetworkSecurity } from './lib/network-security'
+
 import { PerformanceMonitor } from './lib/performance'
 
 // Initialize performance monitoring
 const performanceMonitor = new PerformanceMonitor();
 performanceMonitor.mark('app-start');
 
-// Initialize network security (block external connections)
-setupNetworkSecurity();
+
 
 // Initialize browser compatibility checks
 initializeBrowserCompatibility();
