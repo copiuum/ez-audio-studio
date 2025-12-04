@@ -1,11 +1,18 @@
 import React, { useRef, useEffect, useCallback, useMemo } from 'react';
 import { optimizeCanvasForOpenGL } from '@/lib/opengl-optimizations';
 
+export interface AudioSelection {
+  startTime: number;
+  endTime: number;
+}
+
 interface WaveformSeekProps {
   audioBuffer: AudioBuffer | null;
   currentTime: number;
   duration: number;
   onSeek: (time: number) => void;
+  selection?: AudioSelection | null;
+  onSelectionChange?: (selection: AudioSelection | null) => void;
   width?: number;
   height?: number;
   className?: string;
@@ -16,12 +23,16 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
   currentTime,
   duration,
   onSeek,
+  selection,
+  onSelectionChange,
   width = 800,
   height = 120,
   className = '',
 }) => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const isDraggingRef = useRef(false);
+  const isSelectingRef = useRef(false);
+  const selectionStartRef = useRef<number>(0);
   const waveformDataRef = useRef<number[]>([]);
 
   // Generate waveform data from audio buffer
@@ -74,8 +85,27 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
 
     if (waveformDataRef.current.length === 0) return;
 
-    // Calculate current position
+    // Calculate current position and selection bounds
     const currentPosition = (currentTime / duration) * width;
+    const selectionStart = selection ? (selection.startTime / duration) * width : -1;
+    const selectionEnd = selection ? (selection.endTime / duration) * width : -1;
+
+    // Draw selection background first (behind waveform)
+    if (selection && selectionStart >= 0 && selectionEnd >= 0) {
+      const selStart = Math.min(selectionStart, selectionEnd);
+      const selEnd = Math.max(selectionStart, selectionEnd);
+      
+      // Selection background
+      ctx.fillStyle = 'hsla(45, 80%, 60%, 0.2)'; // Semi-transparent yellow
+      ctx.fillRect(selStart, 0, selEnd - selStart, height);
+      
+      // Selection border
+      ctx.strokeStyle = 'hsl(45, 80%, 60%)';
+      ctx.lineWidth = 1;
+      ctx.setLineDash([4, 2]);
+      ctx.strokeRect(selStart, 0, selEnd - selStart, height);
+      ctx.setLineDash([]); // Reset line dash
+    }
 
     // Draw waveform
     const centerY = height / 2;
@@ -93,16 +123,19 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
       const y1 = centerY - amplitude;
       const y2 = centerY + amplitude;
 
-      // Color based on position relative to current time
-      if (i < currentPosition) {
+      // Determine color based on selection and playback state
+      let strokeStyle = 'hsl(220, 10%, 30%)'; // Default unplayed color
+      
+      if (selection && i >= Math.min(selectionStart, selectionEnd) && i <= Math.max(selectionStart, selectionEnd)) {
+        // Selected portion - bright yellow/orange
+        strokeStyle = 'hsl(45, 80%, 70%)';
+      } else if (i < currentPosition) {
         // Played portion - gradient from blue to purple
         const progress = i / currentPosition;
-        ctx.strokeStyle = `hsl(${220 + progress * 60}, 60%, ${50 + progress * 20}%)`;
-      } else {
-        // Unplayed portion - muted gray
-        ctx.strokeStyle = 'hsl(220, 10%, 30%)';
+        strokeStyle = `hsl(${220 + progress * 60}, 60%, ${50 + progress * 20}%)`;
       }
-
+      
+      ctx.strokeStyle = strokeStyle;
       ctx.beginPath();
       ctx.moveTo(x, y1);
       ctx.lineTo(x, y2);
@@ -132,60 +165,118 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     ctx.moveTo(0, centerY);
     ctx.lineTo(width, centerY);
     ctx.stroke();
-  }, [audioBuffer, currentTime, duration, width, height]);
+  }, [audioBuffer, currentTime, duration, selection, width, height]);
 
-  // Handle mouse/touch events for seeking
-  const handlePointerDown = useCallback((e: React.PointerEvent) => {
-    isDraggingRef.current = true;
-    handlePointerMove(e);
-  }, [handlePointerMove]);
-
-  const handlePointerMove = useCallback((e: React.PointerEvent) => {
-    if (!isDraggingRef.current || !canvasRef.current || !duration) return;
-
-    const rect = canvasRef.current.getBoundingClientRect();
-    const canvasX = e.clientX - rect.left;
+  // Utility function to convert mouse position to time
+  const getTimeFromPosition = useCallback((clientX: number): number => {
+    if (!canvasRef.current || !duration) return 0;
     
-    // Account for canvas scaling and ensure we're within bounds
+    const rect = canvasRef.current.getBoundingClientRect();
+    const canvasX = clientX - rect.left;
     const scaleX = width / rect.width;
     const actualX = canvasX * scaleX;
     const clampedX = Math.max(0, Math.min(width, actualX));
-    
     const percentage = clampedX / width;
-    const newTime = percentage * duration;
+    return percentage * duration;
+  }, [duration, width]);
+
+  // Handle mouse/touch events for seeking and selection
+  const handlePointerDown = useCallback((e: React.PointerEvent) => {
+    if (!canvasRef.current || !duration) return;
     
-    onSeek(newTime);
-  }, [duration, width, onSeek]);
+    const time = getTimeFromPosition(e.clientX);
+    
+    // Check if Shift key is held for selection
+    if (e.shiftKey && onSelectionChange) {
+      // Start selection mode
+      isSelectingRef.current = true;
+      selectionStartRef.current = time;
+      
+      // If there's an existing selection, extend it
+      if (selection) {
+        const distToStart = Math.abs(time - selection.startTime);
+        const distToEnd = Math.abs(time - selection.endTime);
+        
+        if (distToStart < distToEnd) {
+          // Closer to start, extend from end
+          selectionStartRef.current = selection.endTime;
+        } else {
+          // Closer to end, extend from start
+          selectionStartRef.current = selection.startTime;
+        }
+      }
+    } else {
+      // Normal seeking mode
+      isDraggingRef.current = true;
+      onSeek(time);
+    }
+  }, [duration, getTimeFromPosition, onSeek, onSelectionChange, selection]);
+
+  const handlePointerMove = useCallback((e: React.PointerEvent) => {
+    if (!canvasRef.current || !duration) return;
+    
+    const time = getTimeFromPosition(e.clientX);
+    
+    if (isSelectingRef.current && onSelectionChange) {
+      // Update selection
+      const startTime = Math.min(selectionStartRef.current, time);
+      const endTime = Math.max(selectionStartRef.current, time);
+      onSelectionChange({ startTime, endTime });
+    } else if (isDraggingRef.current) {
+      // Update seek position
+      onSeek(time);
+    }
+  }, [duration, getTimeFromPosition, onSeek, onSelectionChange]);
 
   const handlePointerUp = useCallback(() => {
     isDraggingRef.current = false;
+    isSelectingRef.current = false;
   }, []);
 
-  // Handle click for immediate seeking
+  // Handle click for immediate seeking (only if not dragging)
   const handleClick = useCallback((e: React.MouseEvent) => {
-    if (!canvasRef.current || !duration) return;
+    // Click is handled by pointer events, this is just for accessibility
+  }, []);
 
-    const rect = canvasRef.current.getBoundingClientRect();
-    const canvasX = e.clientX - rect.left;
+  // Handle double-click to select all
+  const handleDoubleClick = useCallback((e: React.MouseEvent) => {
+    if (!duration || !onSelectionChange) return;
     
-    // Account for canvas scaling and ensure we're within bounds
-    const scaleX = width / rect.width;
-    const actualX = canvasX * scaleX;
-    const clampedX = Math.max(0, Math.min(width, actualX));
-    
-    const percentage = clampedX / width;
-    const newTime = percentage * duration;
-    
-    onSeek(newTime);
-  }, [duration, width, onSeek]);
+    e.preventDefault();
+    onSelectionChange({ startTime: 0, endTime: duration });
+  }, [duration, onSelectionChange]);
 
-  // Handle keyboard navigation
+  // Handle keyboard navigation and selection
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (!duration) return;
 
     const step = duration / 100; // 1% of duration
-    let newTime = currentTime;
 
+    // Selection shortcuts
+    if (e.ctrlKey || e.metaKey) {
+      switch (e.key.toLowerCase()) {
+        case 'a':
+          e.preventDefault();
+          if (onSelectionChange) {
+            onSelectionChange({ startTime: 0, endTime: duration });
+          }
+          return;
+        default:
+          break;
+      }
+    }
+
+    // Clear selection on Escape
+    if (e.key === 'Escape') {
+      e.preventDefault();
+      if (onSelectionChange) {
+        onSelectionChange(null);
+      }
+      return;
+    }
+
+    // Navigation shortcuts
+    let newTime = currentTime;
     switch (e.key) {
       case 'ArrowLeft':
         e.preventDefault();
@@ -216,7 +307,7 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     }
 
     onSeek(newTime);
-  }, [currentTime, duration, onSeek]);
+  }, [currentTime, duration, onSeek, onSelectionChange]);
 
   // Draw waveform when data changes
   useEffect(() => {
@@ -230,26 +321,27 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
     }
   }, []);
 
-  // Add global pointer event listeners
+  // Add global pointer event listeners for dragging outside canvas
   useEffect(() => {
     const handleGlobalPointerMove = (e: PointerEvent) => {
-      if (isDraggingRef.current && canvasRef.current && duration) {
-        const rect = canvasRef.current.getBoundingClientRect();
-        const canvasX = e.clientX - rect.left;
-        
-        // Account for canvas scaling and ensure we're within bounds
-        const scaleX = width / rect.width;
-        const actualX = canvasX * scaleX;
-        const clampedX = Math.max(0, Math.min(width, actualX));
-        
-        const percentage = clampedX / width;
-        const newTime = percentage * duration;
-        onSeek(newTime);
+      if (!canvasRef.current || !duration) return;
+      
+      const time = getTimeFromPosition(e.clientX);
+      
+      if (isSelectingRef.current && onSelectionChange) {
+        // Update selection
+        const startTime = Math.min(selectionStartRef.current, time);
+        const endTime = Math.max(selectionStartRef.current, time);
+        onSelectionChange({ startTime, endTime });
+      } else if (isDraggingRef.current) {
+        // Update seek position
+        onSeek(time);
       }
     };
 
     const handleGlobalPointerUp = () => {
       isDraggingRef.current = false;
+      isSelectingRef.current = false;
     };
 
     document.addEventListener('pointermove', handleGlobalPointerMove);
@@ -259,7 +351,7 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
       document.removeEventListener('pointermove', handleGlobalPointerMove);
       document.removeEventListener('pointerup', handleGlobalPointerUp);
     };
-  }, [duration, width, onSeek]);
+  }, [duration, width, onSeek, onSelectionChange, getTimeFromPosition]);
 
   if (!audioBuffer) {
     return (
@@ -281,10 +373,11 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onClick={handleClick}
+      onDoubleClick={handleDoubleClick}
       onKeyDown={handleKeyDown}
       style={{ touchAction: 'none' }}
       role="slider"
-      aria-label="Audio seek control"
+      aria-label="Audio seek and selection control"
       aria-valuemin={0}
       aria-valuemax={duration}
       aria-valuenow={currentTime}
