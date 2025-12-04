@@ -1,6 +1,6 @@
 declare global {
   interface Window {
-    __TAURI__: any;
+    __TAURI__?: unknown;
     tauriAPI: {
       // File operations
       openFileDialog: () => Promise<string[]>;
