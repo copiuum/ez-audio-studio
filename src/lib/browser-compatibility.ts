@@ -179,25 +179,23 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
   // Check minimum version requirements for modern browsers
   const version = parseInt(browser.version);
   
-  // Chromium-based browsers (130+ for modern features)
-  if (browser.isChromiumBased && version < 130) {
-    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  // Chromium-based browsers (Chrome, Edge, Brave, etc.)
+  if (browser.isChromiumBased && version < 88) {
+    issues.push(`${browser.name} version 88+ required for Web Audio API and Service Worker support`);
+  } else if (browser.isChromiumBased && version < 100) {
+    console.warn(`⚠️ ${browser.name} version ${version} detected. Version 100+ recommended for optimal performance`);
   }
   
-  // Firefox-based browsers (130+ for modern features)
-  if (browser.isFirefoxBased && version < 130) {
-    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  // Firefox-based browsers
+  if (browser.isFirefoxBased && version < 85) {
+    issues.push(`${browser.name} version 85+ required for Web Audio API and Service Worker support`);
+  } else if (browser.isFirefoxBased && version < 100) {
+    console.warn(`⚠️ ${browser.name} version ${version} detected. Version 100+ recommended for optimal performance`);
   }
   
-  // Legacy version checks for older browsers
-  if (browser.isChrome && version < 88) {
-    issues.push('Chrome version 88+ recommended for best performance');
-  }
-  if (browser.isFirefox && version < 85) {
-    issues.push('Firefox version 85+ recommended for best performance');
-  }
-  if (browser.isBrave && version < 88) {
-    issues.push('Brave version 88+ recommended for best performance');
+  // Safari (WebKit-based)
+  if (browser.isSafari && version < 14) {
+    issues.push('Safari version 14+ required for Web Audio API support');
   }
   
   return {

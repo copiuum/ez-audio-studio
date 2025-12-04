@@ -34,8 +34,8 @@ export default defineConfig(({ mode }) => ({
     assetsDir: 'assets',
     // Copy Service Worker to build output
     copyPublicDir: true,
-    // Optimize for modern browsers (130+ versions for latest features)
-    target: ['es2022', 'chrome130', 'firefox130'],
+    // Optimize for modern browsers with broad compatibility
+    target: ['es2020', 'chrome88', 'firefox85', 'safari14', 'edge88'],
     // Enable source maps for debugging
     sourcemap: mode === 'development',
     // Optimize chunk splitting
