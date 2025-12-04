@@ -149,31 +149,8 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
     }
   }
   
-  // Debug Service Worker support
-  console.log('🔍 Service Worker Debug:', {
-    navigatorExists: typeof navigator !== 'undefined',
-    serviceWorkerInNavigator: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
-    supportsServiceWorker: browser.supportsServiceWorker
-  });
-
   if (!browser.supportsServiceWorker) {
     issues.push('Service Worker is not supported - offline functionality disabled. Some features may not work properly.');
-  } else {
-    console.log('✅ Service Worker is supported by browser');
-    // Check if Service Worker registration is working
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        if (registrations.length === 0) {
-          console.warn('⚠️ Service Worker supported but not registered yet');
-          // Don't add to issues array - this is just a timing issue
-        } else {
-          console.log('✅ Service Worker is registered and active:', registrations.length, 'registration(s)');
-        }
-      }).catch(error => {
-        console.warn('❌ Service Worker registration check failed:', error);
-        // This might indicate a real problem, but don't duplicate the error message
-      });
-    }
   }
   
   // Check minimum version requirements for modern browsers
@@ -307,33 +284,10 @@ export function optimizeForDevice() {
   return optimizations;
 }
 
-// Show browser compatibility warning
+// Show browser compatibility warning (deprecated - use SystemStatus component instead)
 export function showCompatibilityWarning() {
-  const support = checkBrowserSupport();
-  
-  if (!support.supported) {
-    const warning = document.createElement('div');
-    warning.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: #f44336;
-      color: white;
-      padding: 10px;
-      text-align: center;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-    `;
-    
-    warning.innerHTML = `
-      <strong>Browser Compatibility Warning:</strong> 
-      ${support.issues.join(', ')}.
-      <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 5px 10px; background: white; border: none; border-radius: 3px; cursor: pointer;">Dismiss</button>
-    `;
-    
-    document.body.appendChild(warning);
-  }
+  // This function is deprecated in favor of the SystemStatus component
+  // which provides a much better user experience
 }
 
 // Initialize browser compatibility checks

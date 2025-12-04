@@ -7,6 +7,7 @@ import Studio from "./pages/Studio";
 import NotFound from "./pages/NotFound";
 import { WarningOverlay } from "@/components/WarningOverlay";
 import { SettingsButton } from "@/components/SettingsButton";
+import { SystemStatus } from "@/components/SystemStatus";
 import { useState } from "react";
 
 const queryClient = new QueryClient();
@@ -34,6 +35,7 @@ const App = () => {
           <WarningOverlay onDismiss={() => setShowWarning(false)} />
         )}
         <SettingsButton onShowWarning={handleShowWarning} />
+        <SystemStatus />
       </TooltipProvider>
     </QueryClientProvider>
   );
