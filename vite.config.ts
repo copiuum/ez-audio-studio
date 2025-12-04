@@ -16,6 +16,8 @@ export default defineConfig(({ mode }) => ({
       // WebGL performance headers for OpenGL optimization
       'Cross-Origin-Opener-Policy': 'same-origin',
       'Cross-Origin-Embedder-Policy': 'require-corp',
+      // Service Worker headers
+      'Service-Worker-Allowed': '/',
     },
   },
   base: './',
@@ -30,6 +32,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    // Copy Service Worker to build output
+    copyPublicDir: true,
     // Optimize for modern browsers (130+ versions for latest features)
     target: ['es2022', 'chrome130', 'firefox130'],
     // Enable source maps for debugging

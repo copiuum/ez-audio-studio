@@ -7,25 +7,28 @@ const STATIC_FILES = [
   '/',
   '/index.html',
   '/favicon.ico',
-  '/src/main.tsx',
-  '/src/App.tsx',
-  '/src/index.css',
+  // Note: In development, Vite serves files dynamically
+  // In production, these will be in /assets/ folder
 ];
 
 // Install event - cache static files
 self.addEventListener('install', (event) => {
+  console.log('Service Worker installing...');
   event.waitUntil(
     caches.open(STATIC_CACHE)
       .then((cache) => {
         console.log('Caching static files');
-        return cache.addAll(STATIC_FILES);
+        // Only cache files that definitely exist
+        return cache.addAll(STATIC_FILES.filter(url => url !== '/src/main.tsx' && url !== '/src/App.tsx' && url !== '/src/index.css'));
       })
       .then(() => {
         console.log('Static files cached successfully');
         return self.skipWaiting();
       })
       .catch((error) => {
-        console.error('Failed to cache static files:', error);
+        console.warn('Some static files could not be cached (this is normal in development):', error);
+        // Don't fail the installation if some files can't be cached
+        return self.skipWaiting();
       })
   );
 });
