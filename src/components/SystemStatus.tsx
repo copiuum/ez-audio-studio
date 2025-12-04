@@ -14,7 +14,7 @@ import {
   Settings,
   RefreshCw
 } from 'lucide-react';
-import { checkBrowserSupport, detectBrowser } from '@/lib/browser-compatibility';
+import { checkBrowserSupport, getBrowserInfo } from '@/lib/browser-compatibility';
 
 interface SystemStatusProps {
   className?: string;
@@ -35,7 +35,7 @@ export const SystemStatus: React.FC<SystemStatusProps> = ({ className = '' }) =>
   const [lastChecked, setLastChecked] = useState<Date>(new Date());
 
   const checkSystemStatus = () => {
-    const browser = detectBrowser();
+    const browser = getBrowserInfo();
     const support = checkBrowserSupport();
     const items: StatusItem[] = [];
 

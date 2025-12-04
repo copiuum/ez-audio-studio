@@ -7,6 +7,7 @@ export interface BrowserInfo {
   isFirefox: boolean;
   isBrave: boolean;
   isEdge: boolean;
+  isSafari: boolean;
   isChromiumBased: boolean;
   isFirefoxBased: boolean;
   isMobile: boolean;
@@ -52,6 +53,9 @@ export function getBrowserInfo(): BrowserInfo {
   } else if (userAgent.includes('Waterfox')) {
     name = 'Waterfox';
     version = userAgent.match(/Firefox\/(\d+)/)?.[1] || '0';
+  } else if (userAgent.includes('Safari') && !userAgent.includes('Chrome')) {
+    name = 'Safari';
+    version = userAgent.match(/Version\/(\d+)/)?.[1] || '0';
   }
   
   // Detect Chromium-based browsers
@@ -108,6 +112,7 @@ export function getBrowserInfo(): BrowserInfo {
     isFirefox: name === 'Firefox',
     isBrave: name === 'Brave',
     isEdge: name === 'Edge',
+    isSafari: name === 'Safari',
     isChromiumBased,
     isFirefoxBased,
     isMobile,
