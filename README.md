@@ -10,7 +10,7 @@ This project is a personal imagination of what slowedreverb.studio could have be
 
 There are several ways of editing your application:
 
-**Use Cursor or any code editor**
+**Use any code editor or IDE**
 
 Changes made via Cursor or any code editor can be committed to this repo.
 
