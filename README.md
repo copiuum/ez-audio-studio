@@ -24,7 +24,7 @@ This project is built with:
 - shadcn-ui
 - Tailwind CSS
 - Web Audio API
-- Electron (for desktop app)
+- Tauri (for desktop app)
 
 ## Features
 
@@ -52,7 +52,7 @@ npm run preview
 
 ### Desktop Version
 ```bash
-npm run electron:build
+npm run tauri:build
 ```
 
 ## Development
@@ -67,8 +67,8 @@ npm run dev
 # Build for production
 npm run build
 
-# Run Electron desktop app
-npm run electron:dev
+# Run Tauri desktop app
+npm run tauri:dev
 ```
 
 ## License

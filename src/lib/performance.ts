@@ -1,5 +1,15 @@
 // Performance optimization utilities for EZ Audio Studio
 
+interface PerformanceMemory {
+  usedJSHeapSize: number;
+  totalJSHeapSize: number;
+  jsHeapSizeLimit: number;
+}
+
+interface PerformanceWithMemory extends Performance {
+  memory?: PerformanceMemory;
+}
+
 // Performance monitoring
 export class PerformanceMonitor {
   private marks: Map<string, number> = new Map();
@@ -57,8 +67,10 @@ export class MemoryManager {
 
   trackMemoryUsage(): void {
     if ('memory' in performance) {
-      const memory = (performance as any).memory;
-      this.memoryUsage.push(memory.usedJSHeapSize);
+      const memory = (performance as PerformanceWithMemory).memory;
+      if (memory) {
+        this.memoryUsage.push(memory.usedJSHeapSize);
+      }
       
       if (this.memoryUsage.length > this.maxMemoryUsage) {
         this.memoryUsage.shift();
@@ -73,7 +85,8 @@ export class MemoryManager {
 
   getCurrentMemoryUsage(): number {
     if ('memory' in performance) {
-      return (performance as any).memory.usedJSHeapSize;
+      const memory = (performance as PerformanceWithMemory).memory;
+      return memory?.usedJSHeapSize || 0;
     }
     return 0;
   }
@@ -189,7 +202,7 @@ export class CacheManager {
   private static readonly CACHE_PREFIX = 'ez_audio_';
   private static readonly MAX_CACHE_SIZE = 50 * 1024 * 1024; // 50MB
 
-  static set(key: string, value: any, ttl: number = 3600000): void { // 1 hour default
+  static set(key: string, value: unknown, ttl: number = 3600000): void { // 1 hour default
     try {
       const item = {
         value,
@@ -204,7 +217,7 @@ export class CacheManager {
     }
   }
 
-  static get(key: string): any {
+  static get(key: string): unknown {
     try {
       const item = localStorage.getItem(this.CACHE_PREFIX + key);
       if (!item) return null;
@@ -284,7 +297,7 @@ export class CacheManager {
 }
 
 // Debounce utility for performance
-export function debounce<T extends (...args: any[]) => any>(
+export function debounce<T extends (...args: unknown[]) => unknown>(
   func: T,
   wait: number
 ): (...args: Parameters<T>) => void {
@@ -297,7 +310,7 @@ export function debounce<T extends (...args: any[]) => any>(
 }
 
 // Throttle utility for performance
-export function throttle<T extends (...args: any[]) => any>(
+export function throttle<T extends (...args: unknown[]) => unknown>(
   func: T,
   limit: number
 ): (...args: Parameters<T>) => void {

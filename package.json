@@ -15,11 +15,9 @@
     "analyze": "bunx vite-bundle-analyzer dist",
     "lint": "eslint .",
     "preview": "vite preview",
-    "electron": "electron electron/main.js",
-    "electron:dev": "concurrently \"npm run dev\" \"wait-on http://localhost:8080 && electron electron/main.js\"",
-    "electron:build": "npm run build && electron-builder",
-    "electron:pack": "npm run build && electron-builder --dir",
-    "electron:dist": "npm run build && electron-builder"
+    "tauri": "tauri",
+    "tauri:dev": "tauri dev",
+    "tauri:build": "tauri build"
   },
   "dependencies": {
     "@breezystack/lamejs": "^1.2.7",
@@ -83,8 +81,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react-swc": "^3.11.0",
     "autoprefixer": "^10.4.21",
-    "concurrently": "^9.2.0",
-    "electron-builder": "^26.0.12",
+
     "eslint": "^9.32.0",
     "eslint-plugin-react-hooks": "^5.2.0",
     "eslint-plugin-react-refresh": "^0.4.20",
@@ -94,79 +91,7 @@
     "terser": "^5.43.1",
     "typescript": "^5.8.3",
     "typescript-eslint": "^8.38.0",
-    "vite": "^5.4.19",
-    "vite-bundle-analyzer": "^1.2.1",
-    "wait-on": "^8.0.4"
-  },
-  "main": "electron/main.js",
-  "build": {
-    "appId": "com.ezaudiostudio.app",
-    "productName": "EZ Audio Studio",
-    "directories": {
-      "output": "dist-electron"
-    },
-    "files": [
-      "electron/**/*",
-      "dist/**/*",
-      "node_modules/**/*"
-    ],
-    "mac": {
-      "category": "public.app-category.music",
-      "target": [
-        {
-          "target": "dmg",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        },
-        {
-          "target": "zip",
-          "arch": [
-            "x64",
-            "arm64"
-          ]
-        }
-      ]
-    },
-    "win": {
-      "target": [
-        {
-          "target": "nsis",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "portable",
-          "arch": [
-            "x64"
-          ]
-        }
-      ]
-    },
-    "linux": {
-      "target": [
-        {
-          "target": "AppImage",
-          "arch": [
-            "x64"
-          ]
-        },
-        {
-          "target": "deb",
-          "arch": [
-            "x64"
-          ]
-        }
-      ],
-      "category": "AudioVideo"
-    },
-    "nsis": {
-      "oneClick": false,
-      "allowToChangeInstallationDirectory": true,
-      "createDesktopShortcut": true,
-      "createStartMenuShortcut": true
-    }
+    "vite": "^7.2.6",
+    "vite-bundle-analyzer": "^1.2.1"
   }
 }

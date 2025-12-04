@@ -1,16 +1,27 @@
 // Tauri API wrapper that gracefully handles browser and Tauri environments
+
+interface TauriCore {
+  invoke: <T = unknown>(command: string, args?: Record<string, unknown>) => Promise<T>;
+}
+
+interface TauriEvent {
+  listen: (event: string, handler: (event: unknown) => void) => Promise<() => void>;
+}
+
+type EventListener = (event: unknown) => void;
+
 class TauriAPI {
-  private listeners: Map<string, any[]> = new Map();
+  private listeners: Map<string, EventListener[]> = new Map();
   private isReady = false;
-  private tauriCore: any = null;
-  private tauriEvent: any = null;
+  private tauriCore: TauriCore | null = null;
+  private tauriEvent: TauriEvent | null = null;
 
   private async ensureReady() {
     if (this.isReady) return;
     
     try {
       // Only import Tauri APIs when actually needed and if available
-      if (typeof window !== 'undefined' && (window as any).__TAURI__) {
+      if (typeof window !== 'undefined' && (window as { __TAURI__?: unknown }).__TAURI__) {
         const { invoke } = await import('@tauri-apps/api/core');
         const { listen } = await import('@tauri-apps/api/event');
         this.tauriCore = { invoke };
@@ -22,7 +33,7 @@ class TauriAPI {
     }
   }
 
-  async invoke<T = any>(command: string, args?: Record<string, any>): Promise<T> {
+  async invoke<T = unknown>(command: string, args?: Record<string, unknown>): Promise<T> {
     await this.ensureReady();
     if (!this.isReady || !this.tauriCore) {
       throw new Error('Tauri APIs not available in browser mode');
@@ -68,7 +79,7 @@ class TauriAPI {
     }
   }
 
-  private addListener(channel: string, unlisten: any): void {
+  private addListener(channel: string, unlisten: () => void): void {
     if (!this.listeners.has(channel)) {
       this.listeners.set(channel, []);
     }
@@ -90,7 +101,7 @@ export const getTauriAPI = (): TauriAPI => {
   if (!tauriAPIInstance) {
     tauriAPIInstance = new TauriAPI();
     if (typeof window !== 'undefined') {
-      (window as any).tauriAPI = tauriAPIInstance;
+      (window as { tauriAPI?: TauriAPI }).tauriAPI = tauriAPIInstance;
     }
   }
   return tauriAPIInstance;
