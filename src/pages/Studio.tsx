@@ -1,6 +1,8 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import { StudioControls } from '@/components/StudioControls';
 import { useAudioProcessor, AudioEffects, AdvancedAudioEffects } from '@/components/AudioProcessor';
+import { AudioSelection } from '@/components/WaveformSeek';
+import { extractAudioSegment, removeAudioSegment, insertAudioSegment } from '@/lib/audio-buffer-utils';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import { Button } from '@/components/ui/button';
@@ -219,6 +221,84 @@ const Studio = () => {
     }
   }, [audioBuffer, processedAudioBuffer, originalFileName, audioProcessor]);
 
+  // Edit operation handlers
+  const handleCut = useCallback(async () => {
+    if (!selection || !audioBuffer) return;
+    
+    try {
+      // Extract the selected segment to clipboard
+      const selectedSegment = extractAudioSegment(audioBuffer, selection.startTime, selection.endTime);
+      setClipboard(selectedSegment);
+      
+      // Remove the selected segment from the audio
+      const newBuffer = removeAudioSegment(audioBuffer, selection.startTime, selection.endTime);
+      setAudioBuffer(newBuffer);
+      
+      // Clear the selection
+      setSelection(null);
+      
+      toast({
+        title: "Audio cut",
+        description: `${(selection.endTime - selection.startTime).toFixed(1)}s moved to clipboard`,
+      });
+    } catch (error) {
+      console.error('Error cutting audio:', error);
+      toast({
+        title: "Cut failed",
+        description: "Failed to cut selected audio. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selection, audioBuffer]);
+
+  const handleCopy = useCallback(async () => {
+    if (!selection || !audioBuffer) return;
+    
+    try {
+      // Extract the selected segment to clipboard
+      const selectedSegment = extractAudioSegment(audioBuffer, selection.startTime, selection.endTime);
+      setClipboard(selectedSegment);
+      
+      toast({
+        title: "Audio copied",
+        description: `${(selection.endTime - selection.startTime).toFixed(1)}s copied to clipboard`,
+      });
+    } catch (error) {
+      console.error('Error copying audio:', error);
+      toast({
+        title: "Copy failed",
+        description: "Failed to copy selected audio. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [selection, audioBuffer]);
+
+  const handlePaste = useCallback(async () => {
+    if (!clipboard || !audioBuffer) return;
+    
+    try {
+      // Insert clipboard at current time or start of selection
+      const insertTime = selection ? selection.startTime : currentTime;
+      const newBuffer = insertAudioSegment(audioBuffer, clipboard, insertTime);
+      setAudioBuffer(newBuffer);
+      
+      // Clear the selection after paste
+      setSelection(null);
+      
+      toast({
+        title: "Audio pasted",
+        description: `${clipboard.duration.toFixed(1)}s pasted at ${insertTime.toFixed(1)}s`,
+      });
+    } catch (error) {
+      console.error('Error pasting audio:', error);
+      toast({
+        title: "Paste failed",
+        description: "Failed to paste audio. Please try again.",
+        variant: "destructive",
+      });
+    }
+  }, [clipboard, audioBuffer, selection, currentTime]);
+
   // Keyboard shortcuts
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -248,12 +328,36 @@ const Studio = () => {
             handleExport();
           }
           break;
+        case 'KeyX':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            if (selection && audioBuffer) {
+              handleCut();
+            }
+          }
+          break;
+        case 'KeyC':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            if (selection && audioBuffer) {
+              handleCopy();
+            }
+          }
+          break;
+        case 'KeyV':
+          if (event.ctrlKey || event.metaKey) {
+            event.preventDefault();
+            if (clipboard && audioBuffer) {
+              handlePaste();
+            }
+          }
+          break;
       }
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isPlaying, audioFile, play, pause, stop, handleExport, isExporting]);
+  }, [isPlaying, audioFile, play, pause, stop, handleExport, isExporting, selection, audioBuffer, clipboard, handleCut, handleCopy, handlePaste]);
 
   // Effects change handler with optimized updates
   const handleEffectsChange = useCallback((newEffects: AudioEffects) => {
@@ -301,6 +405,12 @@ const Studio = () => {
               duration={duration}
               audioBuffer={audioBuffer}
               isProcessing={isProcessing}
+              selection={selection}
+              onSelectionChange={setSelection}
+              onCut={handleCut}
+              onCopy={handleCopy}
+              onPaste={handlePaste}
+              hasClipboard={!!clipboard}
             />
 
             {/* Export Popup */}

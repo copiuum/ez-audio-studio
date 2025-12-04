@@ -174,6 +174,58 @@ export const StudioControls: React.FC<StudioControlsProps> = ({
           </Button>
         </div>
       </div>
+
+      {/* Edit Controls */}
+      {hasAudio && (
+        <div className="flex flex-col items-center mb-4">
+          <div className="flex items-center justify-between w-full max-w-xs mb-2">
+            <span className="text-sm font-medium text-foreground">Edit</span>
+            {selection && (
+              <span className="text-xs text-muted-foreground">
+                {((selection.endTime - selection.startTime)).toFixed(1)}s selected
+              </span>
+            )}
+          </div>
+          <div className="flex gap-2 w-full max-w-xs justify-center">
+            <Button
+              variant="outline"
+              onClick={onCut}
+              disabled={!selection || !onCut}
+              size="sm"
+              className="flex-1"
+              aria-label="Cut selected audio"
+              title="Cut (Ctrl+X)"
+            >
+              <Scissors className="w-4 h-4 mr-1" />
+              Cut
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onCopy}
+              disabled={!selection || !onCopy}
+              size="sm"
+              className="flex-1"
+              aria-label="Copy selected audio"
+              title="Copy (Ctrl+C)"
+            >
+              <Copy className="w-4 h-4 mr-1" />
+              Copy
+            </Button>
+            <Button
+              variant="outline"
+              onClick={onPaste}
+              disabled={!hasClipboard || !onPaste}
+              size="sm"
+              className="flex-1"
+              aria-label="Paste audio from clipboard"
+              title="Paste (Ctrl+V)"
+            >
+              <Clipboard className="w-4 h-4 mr-1" />
+              Paste
+            </Button>
+          </div>
+        </div>
+      )}
       
       {/* Waveform Seek Control */}
       {hasAudio && (
