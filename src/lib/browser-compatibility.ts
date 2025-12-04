@@ -150,7 +150,20 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
   }
   
   if (!browser.supportsServiceWorker) {
-    issues.push('Service Worker is not supported - offline functionality disabled');
+    issues.push('Service Worker is not supported - offline functionality disabled. Some features may not work properly.');
+  } else {
+    // Check if Service Worker registration is working
+    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
+      navigator.serviceWorker.getRegistrations().then(registrations => {
+        if (registrations.length === 0) {
+          console.warn('Service Worker supported but not registered yet');
+        } else {
+          console.log('✅ Service Worker is registered and active');
+        }
+      }).catch(error => {
+        console.warn('Service Worker registration check failed:', error);
+      });
+    }
   }
   
   // Check minimum version requirements for modern browsers
