@@ -138,7 +138,7 @@ export const WaveformSeek: React.FC<WaveformSeekProps> = ({
   const handlePointerDown = useCallback((e: React.PointerEvent) => {
     isDraggingRef.current = true;
     handlePointerMove(e);
-  }, []);
+  }, [handlePointerMove]);
 
   const handlePointerMove = useCallback((e: React.PointerEvent) => {
     if (!isDraggingRef.current || !canvasRef.current || !duration) return;
