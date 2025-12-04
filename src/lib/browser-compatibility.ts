@@ -114,7 +114,7 @@ export function getBrowserInfo(): BrowserInfo {
     isLinux,
     displayServer: detectDisplayServer(),
     supportsWebAudio: typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined',
-    supportsServiceWorker: 'serviceWorker' in navigator,
+    supportsServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
     supportsPWA: 'serviceWorker' in navigator && 'PushManager' in window,
     supportsOffline: 'ononline' in window && 'onoffline' in window,
     supportsWebGL: !!window.WebGLRenderingContext,
@@ -149,19 +149,29 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
     }
   }
   
+  // Debug Service Worker support
+  console.log('🔍 Service Worker Debug:', {
+    navigatorExists: typeof navigator !== 'undefined',
+    serviceWorkerInNavigator: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
+    supportsServiceWorker: browser.supportsServiceWorker
+  });
+
   if (!browser.supportsServiceWorker) {
     issues.push('Service Worker is not supported - offline functionality disabled. Some features may not work properly.');
   } else {
+    console.log('✅ Service Worker is supported by browser');
     // Check if Service Worker registration is working
     if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
       navigator.serviceWorker.getRegistrations().then(registrations => {
         if (registrations.length === 0) {
-          console.warn('Service Worker supported but not registered yet');
+          console.warn('⚠️ Service Worker supported but not registered yet');
+          // Don't add to issues array - this is just a timing issue
         } else {
-          console.log('✅ Service Worker is registered and active');
+          console.log('✅ Service Worker is registered and active:', registrations.length, 'registration(s)');
         }
       }).catch(error => {
-        console.warn('Service Worker registration check failed:', error);
+        console.warn('❌ Service Worker registration check failed:', error);
+        // This might indicate a real problem, but don't duplicate the error message
       });
     }
   }
@@ -320,8 +330,7 @@ export function showCompatibilityWarning() {
     
     warning.innerHTML = `
       <strong>Browser Compatibility Warning:</strong> 
-      ${support.issues.join(', ')}. 
-      Some features may not work properly.
+      ${support.issues.join(', ')}.
       <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 5px 10px; background: white; border: none; border-radius: 3px; cursor: pointer;">Dismiss</button>
     `;
     
