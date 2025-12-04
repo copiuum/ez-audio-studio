@@ -114,7 +114,7 @@ export function getBrowserInfo(): BrowserInfo {
     isLinux,
     displayServer: detectDisplayServer(),
     supportsWebAudio: typeof AudioContext !== 'undefined' || typeof (window as any).webkitAudioContext !== 'undefined',
-    supportsServiceWorker: 'serviceWorker' in navigator,
+    supportsServiceWorker: typeof navigator !== 'undefined' && 'serviceWorker' in navigator,
     supportsPWA: 'serviceWorker' in navigator && 'PushManager' in window,
     supportsOffline: 'ononline' in window && 'onoffline' in window,
     supportsWebGL: !!window.WebGLRenderingContext,
@@ -151,43 +151,28 @@ export function checkBrowserSupport(): { supported: boolean; issues: string[] } 
   
   if (!browser.supportsServiceWorker) {
     issues.push('Service Worker is not supported - offline functionality disabled. Some features may not work properly.');
-  } else {
-    // Check if Service Worker registration is working
-    if (typeof navigator !== 'undefined' && 'serviceWorker' in navigator) {
-      navigator.serviceWorker.getRegistrations().then(registrations => {
-        if (registrations.length === 0) {
-          console.warn('Service Worker supported but not registered yet');
-        } else {
-          console.log('✅ Service Worker is registered and active');
-        }
-      }).catch(error => {
-        console.warn('Service Worker registration check failed:', error);
-      });
-    }
   }
   
   // Check minimum version requirements for modern browsers
   const version = parseInt(browser.version);
   
-  // Chromium-based browsers (130+ for modern features)
-  if (browser.isChromiumBased && version < 130) {
-    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  // Chromium-based browsers (Chrome, Edge, Brave, etc.)
+  if (browser.isChromiumBased && version < 88) {
+    issues.push(`${browser.name} version 88+ required for Web Audio API and Service Worker support`);
+  } else if (browser.isChromiumBased && version < 100) {
+    console.warn(`⚠️ ${browser.name} version ${version} detected. Version 100+ recommended for optimal performance`);
   }
   
-  // Firefox-based browsers (130+ for modern features)
-  if (browser.isFirefoxBased && version < 130) {
-    issues.push(`${browser.name} version 130+ recommended for modern features and performance`);
+  // Firefox-based browsers
+  if (browser.isFirefoxBased && version < 85) {
+    issues.push(`${browser.name} version 85+ required for Web Audio API and Service Worker support`);
+  } else if (browser.isFirefoxBased && version < 100) {
+    console.warn(`⚠️ ${browser.name} version ${version} detected. Version 100+ recommended for optimal performance`);
   }
   
-  // Legacy version checks for older browsers
-  if (browser.isChrome && version < 88) {
-    issues.push('Chrome version 88+ recommended for best performance');
-  }
-  if (browser.isFirefox && version < 85) {
-    issues.push('Firefox version 85+ recommended for best performance');
-  }
-  if (browser.isBrave && version < 88) {
-    issues.push('Brave version 88+ recommended for best performance');
+  // Safari (WebKit-based)
+  if (browser.isSafari && version < 14) {
+    issues.push('Safari version 14+ required for Web Audio API support');
   }
   
   return {
@@ -299,34 +284,10 @@ export function optimizeForDevice() {
   return optimizations;
 }
 
-// Show browser compatibility warning
+// Show browser compatibility warning (deprecated - use SystemStatus component instead)
 export function showCompatibilityWarning() {
-  const support = checkBrowserSupport();
-  
-  if (!support.supported) {
-    const warning = document.createElement('div');
-    warning.style.cssText = `
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      background: #f44336;
-      color: white;
-      padding: 10px;
-      text-align: center;
-      z-index: 10000;
-      font-family: Arial, sans-serif;
-    `;
-    
-    warning.innerHTML = `
-      <strong>Browser Compatibility Warning:</strong> 
-      ${support.issues.join(', ')}. 
-      Some features may not work properly.
-      <button onclick="this.parentElement.remove()" style="margin-left: 10px; padding: 5px 10px; background: white; border: none; border-radius: 3px; cursor: pointer;">Dismiss</button>
-    `;
-    
-    document.body.appendChild(warning);
-  }
+  // This function is deprecated in favor of the SystemStatus component
+  // which provides a much better user experience
 }
 
 // Initialize browser compatibility checks
