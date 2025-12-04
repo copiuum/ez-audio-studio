@@ -438,7 +438,7 @@ export const useAudioProcessor = (options: AudioProcessorOptions) => {
 
   // Time update loop
   useEffect(() => {
-    if (!isPlayingRef.current) return;
+    if (!isPlaying) return;
 
     const startTime = audioContextRef.current?.currentTime || 0;
     const startOffset = currentTimeRef.current;
@@ -458,7 +458,7 @@ export const useAudioProcessor = (options: AudioProcessorOptions) => {
     }, 100); // Update every 100ms for smoother position updates
 
     return () => clearInterval(interval);
-  }, [duration, stop, effects.tempo]);
+  }, [isPlaying, duration, stop, effects.tempo]);
 
   // Create processed audio buffer with effects
   const createProcessedBuffer = useCallback(async (): Promise<AudioBuffer | null> => {
